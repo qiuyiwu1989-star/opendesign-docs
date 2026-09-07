@@ -10,8 +10,8 @@ No production deployment, database changes, old Git history, private samples, cu
 - [x] Standalone npm ci, tests, typecheck and both base-path builds pass.
 - [x] Only allowlisted app files, public fixtures and reviewed documentation are staged; scan for private paths/credentials.
 - [x] Original source license and attribution retained.
-- [ ] Remote owner/name/visibility/default branch verified; pushed commit matches local snapshot.
-- [ ] Read-only GitHub CI checked; no deploy workflow or secrets configured.
+- [x] Remote owner/name/visibility/default branch verified; pushed commit matches local snapshot.
+- [x] Read-only GitHub CI checked; no deploy workflow or secrets configured.
 
 ## Status
-Approved by user's explicit request to create a public GitHub repository; execution in progress.
+Completed on 2026-09-07. Public repository: https://github.com/qiuyiwu1989-star/opendesign-docs. Initial snapshot 85dd53813c26b9c4699585eb5527cd853adf998e matches remote main; CI run 34105351817 passed. Independent product acceptance gaps remain tracked separately.

@@ -727,6 +727,13 @@ export function SlidesEditor({
             >
               导出
             </button>
+            <ResourcePanel source={source} contextKey={record.versions.at(-1)!.id}
+              disabled={!ready || saving || readingImage || direct || textDraft || styleDraft || positionDraft}
+              onApply={(expected, next) => {
+                if (sourceRef.current !== expected || busy.current) throw new Error("文档已变化，请重试。");
+                commit(next);
+                resetSelection();
+              }} />
             <button
               className="primary"
               disabled={!ready || saving}
@@ -784,13 +791,6 @@ export function SlidesEditor({
             {size} · 第 {pageIndex + 1} / {pages.length} 页
           </span>
         </div>
-        <ResourcePanel source={source} contextKey={record.versions.at(-1)!.id}
-          disabled={!ready || saving || readingImage || direct || textDraft || styleDraft || positionDraft}
-          onApply={(expected, next) => {
-            if (sourceRef.current !== expected || busy.current) throw new Error("文档已变化，请重试。");
-            commit(next);
-            resetSelection();
-          }} />
         {error && (
           <div role="alert" className="error">
             {error}

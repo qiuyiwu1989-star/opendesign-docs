@@ -15,6 +15,8 @@ Standalone React, TypeScript, Vite, parse5, Vitest. Browser IndexedDB `opendesig
 - Explicit approval required for deployment, production changes and destructive operations.
 
 ## Current state
+Spec027: resource repair is a toolbar popover in both views, not a full-width row. Long-document mode/count guidance no longer reserves canvas height; review version/local-only identity remains in title status. Preserve native auto-popover dismissal, lazy mounted tools and source/version guards. Modern Popover API browsers required; narrow geometry unit-tested, touch/browser matrix still open. 229 tests, typecheck and both build budgets pass. localhost:5181 updated with old hashed assets retained; never automatically reload the user's active page. Local only.
+
 Independent extraction from upstream 576ccbe; spec020. MIT source attribution preserved. First public snapshot is alpha, not a production deployment. See TASKS.md and docs/ACCEPTANCE.md for verification status.
 
 Spec021: content-first presentation uses a full-viewport stage with compact auto-hiding overlay controls. Preserve proportional fitting; never reserve footer height for presentation controls. Local implementation does not imply production deployment.

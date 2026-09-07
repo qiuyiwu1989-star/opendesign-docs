@@ -1,5 +1,13 @@
 # Acceptance record
 
+## Spec027: compact resource tools (2026-09-07)
+
+- 229 tests / 30 files, typecheck, domain-root and `/docs/` builds plus bundle gates pass. `/docs/` initial/static JS 440,611 bytes; slides without tools 485,012 bytes. Root build validated in an isolated temporary output; budget script now accepts an optional directory.
+- Real browser at 1280 x 720: long-document iframe stays y=108, height=596 before/after opening. Slide canvas stays y=191.375, height=497.25. No full-width resource row in either view, no redundant long-document context row. Dark appearance visually verified: popover follows the app surface instead of a hard-white strip.
+- Tab into popup then Escape returns focus to the resource trigger. Clicking inside document iframe light-dismisses. Explicit close and reopening retains the font-rights checkbox (no source mutation). Review title retains version/local-only wording; font checkbox and replacement remain disabled in review.
+- Narrow viewport positioning has pure geometry tests; no new physical touch, older-browser fallback or forced async upload-race acceptance. Native Popover API support is required. Export/save source logic unchanged; repaired-HTML download/reimport gate remains open.
+- Updated the existing local preview on :5181 using `vite build --emptyOutDir false`, preserving old hashed chunks for already-open user pages. Fresh separate built-app tab verified the new toolbar and popup shell, then closed only our test tabs. No automatic refresh of the user's native document, no storage changes, no push or deployment.
+
 ## Spec026: loading slice and download gate (2026-09-07)
 
 - 228 tests / 30 files pass; both build bases pass typecheck and the new manifest-based budget gate. Entry static closure: 439,623 bytes JS / 138,479 bytes gzip for `/docs/`, compared with 500,800 / 157,410 in spec025 (approximately 12.2% / 12.0% less). Slide view loads a further 44,401 bytes, for a 484,024-byte static closure; resource tool body is another 18,762 bytes on demand. Initial CSS is 14.13 kB; slide CSS 8.48 kB is deferred. These are artifact sizes, not measured LCP/load-time gains. Total code after all features load is slightly larger due to loading boundaries.

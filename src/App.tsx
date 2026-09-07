@@ -676,7 +676,7 @@ function Editor({
         <div className="document-title">
           <strong>{record.name}</strong>
           <small aria-live="polite">
-            {directEditing
+            {reviewing ? `审阅 · ${reviewVersion?.label} · 批注仅保存本机` : directEditing
               ? "编辑中 · 结束后暂存"
               : pendingText
                 ? "文字待应用 · 未暂存"
@@ -696,6 +696,7 @@ function Editor({
             </button>
             <button
               aria-pressed={editing && !reviewing}
+              title={`双击改字 · Esc 取消 · ${inspection.targets.length} 处可编辑文字`}
               disabled={saving || !ready}
               onClick={() => leaveReview(true)}
             >
@@ -729,6 +730,15 @@ function Editor({
               </button>
             </>
           )}
+          <ResourcePanel source={reviewVersion?.source ?? source}
+            contextKey={`${record.versions.at(-1)!.id}:${reviewVersionId ?? ""}:${reviewing}`}
+            disabled={!ready || saving || reviewing || directEditing || pendingText}
+            onApply={(expected, next) => {
+              if (sourceRef.current !== expected || savingRef.current) throw new Error("文档已变化，请重试。");
+              commit(next);
+              setRenderSource(next);
+              setSelected("");
+            }} />
           <button
             disabled={saving || !ready || reviewing}
             onClick={() => flush(download)}
@@ -744,16 +754,6 @@ function Editor({
           </button>
         </div>
       </header>
-      <div className="context-bar">
-        <span>
-          {reviewing
-            ? `审阅 · ${reviewVersion?.label} · 批注仅保存本机`
-            : editing
-              ? "双击改字 · Esc 取消"
-              : "阅读模式"}
-        </span>
-        <span>{inspection.targets.length} 处可编辑文字</span>
-      </div>
       {error && (
         <div role="alert" className="error">
           {error}
@@ -774,15 +774,6 @@ function Editor({
           <button onClick={() => setDownloadUrl("")}>关闭</button>
         </div>
       )}
-      <ResourcePanel source={reviewVersion?.source ?? source}
-        contextKey={`${record.versions.at(-1)!.id}:${reviewVersionId ?? ""}:${reviewing}`}
-        disabled={!ready || saving || reviewing || directEditing || pendingText}
-        onApply={(expected, next) => {
-          if (sourceRef.current !== expected || savingRef.current) throw new Error("文档已变化，请重试。");
-          commit(next);
-          setRenderSource(next);
-          setSelected("");
-        }} />
       <div className="editor-body">
         <div className="page-container">
           <iframe

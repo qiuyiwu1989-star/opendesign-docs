@@ -1,13 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ResourcePanel } from "./ResourcePanel";
+import { ResourcePanel, resourcePosition } from "./ResourcePanel";
 import { deferredFeature, FeatureBoundary } from "./deferred-feature";
 import { staticFiles } from "../scripts/bundle-metrics";
 
 describe("spec026 on-demand loading", () => {
   it("does not inspect or mount resource tools in the collapsed shell", () => {
     const html = renderToStaticMarkup(<ResourcePanel source='<img src="missing.png">' contextKey="v1" disabled={false} onApply={() => { throw new Error('unexpected write'); }} />);
-    expect(html).toBe('<details class="resource-panel"><summary>资源</summary></details>');
+    expect(html).toContain('class="resource-trigger"');
+    expect(html).toContain('popover="auto"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).not.toContain('resource-body');
+    expect(html).not.toContain('missing.png');
+    expect(html).not.toContain('<details');
+  });
+  it("keeps the resource overlay within desktop and narrow viewport bounds", () => {
+    expect(resourcePosition({ right: 1200, bottom: 100 }, 1440, 900))
+      .toEqual({ left: 800, top: 108, maxHeight: 784 });
+    expect(resourcePosition({ right: 600, bottom: 800 }, 320, 480))
+      .toEqual({ left: 8, top: 352, maxHeight: 120 });
+    expect(resourcePosition({ right: 30, bottom: 40 }, 390, 844).left).toBe(8);
   });
   it("does not import before render and shows an accessible loading state", () => {
     const load = vi.fn(() => new Promise<{ default: () => null }>(() => {}));

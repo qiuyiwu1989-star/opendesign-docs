@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { staticFiles, type Manifest } from "./bundle-metrics";
 
-const root = resolve("dist");
+const root = resolve(process.argv[2] ?? "dist");
 const manifest: Manifest = JSON.parse(readFileSync(resolve(root, ".vite/manifest.json"), "utf8"));
 const initial = staticFiles(manifest, "index.html");
 const slides = staticFiles(manifest, "src/SlidesEditor.tsx");

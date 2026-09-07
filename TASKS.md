@@ -1,7 +1,7 @@
 # Tasks
 
 ## Now
-- Spec026 loading optimization ready for trial. Actual repaired-HTML download/reimport acceptance remains open; no public push or deployment.
+- Spec027 compact resource tools ready for trial at localhost:5181. Save your work before manually refreshing. Actual repaired-HTML download/reimport acceptance remains open; no public push or deployment.
 
 ## Next
 - [ ] Extend representative pointer/region checks to touch devices, physical mid-gesture cancellation and native fullscreen.
@@ -11,6 +11,7 @@
 - [ ] Define cloud review identity, version anchors and revocable sharing before implementation.
 
 ## Done
+- Spec027: resources now open from both toolbars in a bounded, theme-aware popover; removed the long-document mode/count row, preserving review identity in title status. Lazy tools and inputs remain mounted after dismissal. 229 tests, typecheck and both build configurations/budgets pass. Real two-view no-reflow geometry, Escape/focus return, iframe light dismissal, preserved font checkbox and read-only review verified. Existing preview updated without clearing old chunks or refreshing the user's document. Narrow placement has unit coverage, not touch-device acceptance.
 - Spec026 loading slice: slide editing and resource tools load on demand, with concise loading/error/retry states. Resource checks mount on first expansion and stay mounted when collapsed. Static entry closure 439,623 bytes (12.2% below spec025); slide closure 484,024 bytes. Build budgets count transitive imports, not only the entry filename. 228 tests and both builds pass; built-app repair/save/reload/view-switch checks passed. Download acceptance is separately open.
 - Spec025: one compact grouped picture diagnostic, explicit unification/cancel, source-span replacement with candidate removal, layout attributes preserved, conservative malformed/scripted rejection, async version/context guard and keyboard focus return. Real replacement in both views, undo/redo, save/refresh and read-only original review verified. 224 tests / 29 files and both builds pass. Local only.
 - Spec024: local WOFF/WOFF2 repair for recognizable inline font-face declarations, with rights acknowledgment, bounded header checks and browser decode. Exact src replacement preserves descriptors, versions and backups. Real WOFF2 ready → undo not-ready → redo/save/refresh ready verified; long-document rendering and old-version read-only controls checked. No remote fetching or font redistribution in the repository.

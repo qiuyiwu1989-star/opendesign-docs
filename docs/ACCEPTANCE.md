@@ -1,5 +1,15 @@
 # Acceptance record
 
+## Spec025: explicit responsive image repair (2026-09-07)
+
+- Automated: 224 tests across 29 files, typecheck in both `/docs/` and domain-root builds, and whitespace checks pass. New cases cover grouped diagnostics without suppressing CSS warnings, exact unrelated-byte preservation, confirmation, stale raw/offset/context/epoch/read-only guards, candidate ordering, duplicate/ignored/malformed tags, inert/script/event/identity-bearing candidates, limits, history and saved-source/project-backup round trips.
+- Imported synthetic `examples/picture-check.html` into the existing localhost:5180 workspace, without clearing existing documents. The two SOURCE candidates and missing IMG fallback produced one repair item. Explicit confirmation did not open a chooser until the second action. Cancel retained the original issue and disabled undo; focus returned to the action. Confirmation focuses its button for keyboard users.
+- Slide view: actual local PNG chosen and decoded at naturalWidth 1024; IMG width/height remained 240 × 240 and computed object-fit remained contain. SOURCE count became 0. Undo restored two candidate nodes and missing fallback; redo repaired again. Save created version 2; reload reopened picture-check.html, decoded width 1024 with dimensions retained and no candidate nodes.
+- Original-version review remained unchanged with its own responsive-image diagnostic; unification action was disabled. Loaded original as a draft in long-document view, selected a different real PNG (naturalWidth 256), retained 240 × 240 dimensions, then saved version 3. Original and slide-edited version remained available. Test PNG inputs were existing local assets, not bundled or committed.
+- No new schema, dependency, remote fetching, script execution, public push or deployment. Saved/backup bytes have automated round-trip checks; this phase did not independently download repaired HTML to disk and reimport it. No forced browser decode race, physical touch gate or arbitrary HTML compatibility claim.
+- HTML source-specific dimensions and crops can change after unification; preserving attributes is not pixel preservation. Complex/nested/scripted pictures remain diagnostic-only. Existing selected single-background replacement was not expanded to arbitrary CSS. Semantics reference: [HTML picture/source](https://html.spec.whatwg.org/multipage/embedded-content.html#the-picture-element).
+- Build warning retained: main JS 500.80 kB minified, 157.41 kB gzip, above Vite's 500 kB warning threshold. Both builds succeed; initial-loading code splitting and repaired-HTML download/reimport are next gates.
+
 ## Spec024: local font repair (2026-09-07)
 
 - Final gate: 198 tests across 28 files, typecheck, `/docs/` build, domain-root build and whitespace checks passed.

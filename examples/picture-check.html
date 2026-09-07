@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>响应式图片检查</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#e9eeeb;color:#183c32;font-family:system-ui,sans-serif}
+.slide{width:1280px;height:720px;padding:80px;background:#f7f8f2}
+h1{font-size:64px;margin:0 0 30px}p{font-size:28px;line-height:1.5;max-width:700px}
+picture{display:block}img{object-fit:contain;background:#e3eae3;border-radius:16px}
+</style></head><body><section class="slide">
+<h1>一张图，完整保留。</h1>
+<picture>
+  <source media="(min-width: 800px)" srcset="assets/wide.webp 1x, assets/wide-2x.webp 2x" type="image/webp">
+  <!-- Keep this caption marker and the IMG layout. -->
+  <source media="(max-width: 799px)" srcset="assets/narrow.png">
+  <img src="assets/fallback.png" srcset="assets/fallback-2x.png 2x" width="240" height="240" alt="响应式封面">
+</picture>
+<p>替换图片后，检查尺寸、撤销和版本恢复。</p>
+</section></body></html>

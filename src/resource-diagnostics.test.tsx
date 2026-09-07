@@ -32,11 +32,12 @@ describe("spec023 resource diagnostics", () => {
     expect(cssReferences(`@media screen {@font-face {src:url('f\\6f nt.woff2')}} .a{background:url("a(b).png")} @import url('x.css');`))
       .toEqual([{ url: "font.woff2", font: true, stylesheet: false }, { url: "a(b).png", font: false, stylesheet: false }, { url: "x.css", font: false, stylesheet: true }]);
   });
-  it("ignores inert script/template/svg content and never offers picture replacement", () => {
+  it("ignores inert script/template/svg content and groups supported picture separately from standalone IMG", () => {
     const source = `<script>"<img src='secret'>"</script><template><img src="secret"></template><svg><image href="secret"/></svg><picture><source srcset="x.png 2x"><img src="fallback.png"></picture>`;
     const issues = inspectResources(source);
-    expect(issues).toHaveLength(2);
+    expect(issues).toHaveLength(1);
     expect(issues.every(i => i.imageOffset === undefined)).toBe(true);
+    expect(issues[0]!.pictureOffset).toBe(source.indexOf('<picture>'));
     expect(() => replaceResourceImage(source, source.indexOf('<img src="fallback'), image)).toThrow();
   });
   it("reports responsive candidates even with an embedded fallback and bounds embedded labels", () => {

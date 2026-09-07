@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { inspectResources, replaceResourceImage } from "./resource-diagnostics";
-import { prepareLocalImage } from "./image-import";
+import { imageRepairIsCurrent, prepareLocalImage } from "./image-import";
 import { repairEmbeddedImages } from "./image-repair";
 import { inspectFontTargets, replaceFontSource, type FontTarget } from "./font-repair";
 import { fontResultIsCurrent, prepareLocalFont } from "./font-import";
+import { inspectPictureTargets, replacePictureImage } from "./responsive-image";
 import "./resources.css";
 
 export function ResourcePanel({ source, disabled, contextKey, onApply }: {
@@ -16,23 +17,27 @@ export function ResourcePanel({ source, disabled, contextKey, onApply }: {
   const repair = useMemo(() => repairEmbeddedImages(source), [source]);
   const fonts = useMemo(() => inspectFontTargets(source), [source]);
   const [fontRights, setFontRights] = useState(false);
+  const [pictureConfirmation, setPictureConfirmation] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [reading, setReading] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const fontInput = useRef<HTMLInputElement>(null);
+  const pictureConfirmButton = useRef<HTMLButtonElement>(null);
   const fontIntent = useRef<{ source: string; target: FontTarget; epoch: number } | null>(null);
-  const intent = useRef<{ source: string; offset: number; epoch: number } | null>(null);
+  const intent = useRef<{ source: string; contextKey: string; offset: number; epoch: number; pictureRaw?: string } | null>(null);
   const epoch = useRef(0), alive = useRef(true);
-  const latest = useRef({ source, disabled, onApply, fontRights });
-  latest.current = { source, disabled, onApply, fontRights };
+  const latest = useRef({ source, contextKey, disabled, onApply, fontRights });
+  latest.current = { source, contextKey, disabled, onApply, fontRights };
   useEffect(() => {
     epoch.current++;
     intent.current = null;
     fontIntent.current = null;
     setFontRights(false);
+    setPictureConfirmation(null);
     setError("");
   }, [source, contextKey, disabled]);
   useEffect(() => { alive.current = true; return () => { alive.current = false; epoch.current++; }; }, []);
+  useEffect(() => { if (pictureConfirmation !== null) pictureConfirmButton.current?.focus(); }, [pictureConfirmation]);
   const upload = async (file?: File) => {
     const captured = intent.current;
     intent.current = null;
@@ -42,9 +47,11 @@ export function ResourcePanel({ source, disabled, contextKey, onApply }: {
     try {
       const image = await prepareLocalImage(file);
       if (!alive.current) return;
-      if (captured.epoch !== epoch.current || latest.current.disabled || captured.source !== latest.current.source)
+      if (!imageRepairIsCurrent(captured, { ...latest.current, epoch: epoch.current }))
         throw new Error("文档状态已变化，请重新选择图片。");
-      const next = replaceResourceImage(captured.source, captured.offset, image);
+      const next = captured.pictureRaw !== undefined
+        ? replacePictureImage(captured.source, { offset: captured.offset, raw: captured.pictureRaw }, image, true)
+        : replaceResourceImage(captured.source, captured.offset, image);
       latest.current.onApply(captured.source, next);
     } catch (e) {
       if (alive.current) setError(e instanceof Error ? e.message : "图片替换失败，请重试。");
@@ -79,9 +86,25 @@ export function ResourcePanel({ source, disabled, contextKey, onApply }: {
         }}>修复引用</button>
       </div>}
       {issues.slice(0, 30).map(issue => <div className="resource-row" key={issue.id}>
-        <div><strong>{issue.kind} · {issue.reason}</strong><p className="resource-label" title={issue.label}>{issue.label}</p><small>{issue.hint}</small></div>
+        <div><strong>{issue.kind} · {issue.reason}</strong><p className="resource-label" title={issue.label}>{issue.label}</p><small>{issue.hint}</small>
+          {issue.pictureOffset !== undefined && pictureConfirmation === issue.pictureOffset && <div className="resource-confirm" role="group" aria-label={`确认统一图片：${issue.label}`}>
+            <p>所有屏幕使用同一张图，原候选图将移除。保留图片样式；请检查裁切与比例。</p>
+            <button ref={pictureConfirmButton} disabled={disabled || reading} onClick={() => {
+              const target = inspectPictureTargets(source).find(t => t.offset === issue.pictureOffset);
+              if (!target) { setError("图片已变化，请重新选择。"); return; }
+              intent.current = { source, contextKey, offset: target.offset, pictureRaw: target.raw, epoch: epoch.current };
+              setError(""); input.current?.click();
+            }}>确认并选图</button>
+            <button disabled={reading} onClick={event => {
+              event.currentTarget.closest(".resource-row")?.querySelector<HTMLButtonElement>("[data-picture-action]")?.focus();
+              intent.current = null; setPictureConfirmation(null);
+            }}>取消</button>
+          </div>}
+        </div>
+        {issue.pictureOffset !== undefined && <button data-picture-action aria-expanded={pictureConfirmation === issue.pictureOffset} disabled={disabled || reading}
+          aria-label={`统一图片：${issue.label}`} onClick={() => { intent.current = null; setPictureConfirmation(issue.pictureOffset!); setError(""); }}>统一图片</button>}
         {issue.imageOffset !== undefined && <button disabled={disabled || reading} aria-label={`替换图片：${issue.label}`} onClick={() => {
-          intent.current = { source, offset: issue.imageOffset!, epoch: epoch.current };
+          intent.current = { source, contextKey, offset: issue.imageOffset!, epoch: epoch.current };
           setError("");
           input.current?.click();
         }}>选本机图片</button>}

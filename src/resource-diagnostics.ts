@@ -1,6 +1,7 @@
 import { parse, type DefaultTreeAdapterMap } from "parse5";
 import { validateLocalImage, type LocalImage } from "./image-import";
 import { MAX_DOCUMENT_BYTES } from "./slide-insert";
+import { inspectPictureTargets } from "./responsive-image";
 
 type Node = DefaultTreeAdapterMap["node"];
 type Element = DefaultTreeAdapterMap["element"];
@@ -11,6 +12,7 @@ export type ResourceIssue = {
   reason: string;
   hint: string;
   imageOffset?: number;
+  pictureOffset?: number;
 };
 const inert = new Set(["script", "template", "noscript", "svg", "iframe", "object"]);
 const attr = (node: Element, name: string) => node.attrs.find(a => a.name === name)?.value;
@@ -89,6 +91,7 @@ function limitation(url: string, kind: ResourceIssue["kind"]): string | null {
 
 export function inspectResources(source: string): ResourceIssue[] {
   const issues: ResourceIssue[] = [];
+  const pictures = new Map(inspectPictureTargets(source).map(t => [t.offset, t]));
   const add = (url: string, kind: ResourceIssue["kind"], label: string, extra: Partial<ResourceIssue> = {}) => {
     const reason = limitation(url, kind);
     if (!reason) return;
@@ -102,11 +105,19 @@ export function inspectResources(source: string): ResourceIssue[] {
       add(ref.url, kind, ref.url || "空 CSS 引用");
     }
   };
-  const walk = (node: Node, inPicture = false) => {
+  const walk = (node: Node, inPicture = false, groupedPicture = false) => {
     if ("tagName" in node) {
       if (inert.has(node.tagName)) return;
       inPicture ||= node.tagName === "picture";
-      if (node.tagName === "img") {
+      if (node.tagName === "picture") {
+        const target = pictures.get(node.sourceCodeLocation?.startOffset ?? -1);
+        if (target) {
+          groupedPicture = true;
+          issues.push({ id: `resource-${issues.length}`, kind: "图片", label: target.label,
+            reason: "响应式图片待检查", hint: "可统一为一张本机图片。", pictureOffset: target.offset });
+        }
+      }
+      if (node.tagName === "img" && !groupedPicture) {
         const offset = node.sourceCodeLocation?.startOffset;
         const url = attr(node, "src") ?? "";
         const label = attr(node, "alt") || url || "未命名图片";
@@ -117,7 +128,7 @@ export function inspectResources(source: string): ResourceIssue[] {
           issues.push({ id: `resource-${issues.length}`, kind: "图片", label: /^data:/i.test(label) ? "内嵌图片" : label.slice(0, 180), reason: "响应式候选未验证", ...extra });
         } else add(url, "图片", label, extra);
       }
-      if (node.tagName === "source" && inPicture && attr(node, "srcset"))
+      if (node.tagName === "source" && inPicture && !groupedPicture && attr(node, "srcset"))
         issues.push({ id: `resource-${issues.length}`, kind: "图片", label: "picture 响应式候选", reason: "响应式候选未验证", hint: "请在原文件中处理；暂不替换 picture。" });
       if (node.tagName === "link" && /(?:^|\s)stylesheet(?:\s|$)/i.test(attr(node, "rel") ?? ""))
         add(attr(node, "href") ?? "", "样式", attr(node, "href") || "未命名样式表");
@@ -126,7 +137,7 @@ export function inspectResources(source: string): ResourceIssue[] {
       if (node.tagName === "style" && "childNodes" in node)
         css(node.childNodes.map(n => "value" in n ? n.value : "").join(""));
     }
-    if ("childNodes" in node) node.childNodes.forEach(n => walk(n, inPicture));
+    if ("childNodes" in node) node.childNodes.forEach(n => walk(n, inPicture, groupedPicture));
   };
   walk(parse(source, { sourceCodeLocationInfo: true }));
   return issues;

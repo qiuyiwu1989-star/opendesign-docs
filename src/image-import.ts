@@ -6,6 +6,10 @@ export type LocalImage = {
 };
 export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 export const MAX_IMAGE_PIXELS = 20_000_000;
+export function imageRepairIsCurrent(captured: { source: string; contextKey: string; epoch: number },
+  current: { source: string; contextKey: string; epoch: number; disabled: boolean }): boolean {
+  return !current.disabled && captured.source === current.source && captured.contextKey === current.contextKey && captured.epoch === current.epoch;
+}
 const mimeTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 function dimensions(width: number, height: number) {

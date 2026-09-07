@@ -29,6 +29,11 @@ Open http://127.0.0.1:5175/docs/ and choose **演示页示例** or import a trus
 - Static presentation mode with keyboard navigation.
 - Undo/redo, local automatic drafts, immutable saved versions and HTML export.
 - Local version-bound comments, replies and resolution. These are not shared cloud comments.
+- Portable JSON backups of saved versions and their comments; restore as an independent copy.
+
+## Project backup
+
+Open **文档库 → 备份与恢复 → 备份当前文档**, then download the project backup. **恢复备份** imports it as a new document without overwriting the original. Save edits and submit comments first: temporary drafts and unsent input are not included. The format accepts up to 20 MiB JSON and 100 saved versions; linked assets are not bundled.
 
 ## Important limits
 
@@ -38,7 +43,7 @@ Open http://127.0.0.1:5175/docs/ and choose **演示页示例** or import a trus
 - Preview blocks imported scripts and external resources, including external fonts/images. Missing remote assets can affect appearance.
 - Arbitrary HTML is not a free-form canvas. Complex transforms, SVG subtrees, IDs/references and page-local scripts/styles can restrict operations.
 - Single image limit: 4 MiB / 20 megapixels. Final HTML limit: 5 MiB. No animated image/SVG insertion, multi-layer background editing, continuous snapping, PPTX export or real-time co-editing.
-- Native pointer drag/resize and native fullscreen acceptance remain release gates. Unit tests are not a substitute for these checks.
+- Representative pointer drag, vertical resize, undo and region annotation have been exercised in-browser. Broader touch/device coverage and native fullscreen acceptance remain release gates; arbitrary HTML compatibility is not implied.
 
 ## Development
 

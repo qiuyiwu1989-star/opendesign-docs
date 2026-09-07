@@ -1,5 +1,16 @@
 # Acceptance record
 
+## Spec022: everyday editing reliability (2026-09-07)
+
+- Final automated gate: 176 tests across 25 files, typecheck, `/docs/` build, domain-root build and whitespace checks pass. Includes backup validation/atomic failure/collision coverage, stale rounded placement acknowledgments, cancellation and review draft retention. No schema migration.
+- Public two-page demo at 1440 × 900: actual pointer drag, vertical-only corner resize and repeated arrow/Shift-arrow adjustment exercised. Vertical resize produced scale 1.021; subsequent nudges accumulated correctly. Save and refresh retained the second saved version.
+- Real drag → undo uncovered stale iframe rendering: original source was already equal to `renderSource`, so setting it again did not remount. A repaint revision now regenerates the preview channel. Repeated real drag → undo → reselect verified zero offsets and original scale. This specific integration regression has browser evidence, not a new component-level automated test.
+- Local review: selection focused input; comment/reply persisted after refresh; resolving while a reply was unsent retained the draft across filtering; reopening restored pending state. Failure/conflict behavior has automated coverage, not newly forced browser-failure coverage.
+- Downloaded an actual JSON backup in the native browser from the public demo with one saved version and one synthetic comment. The file was 2,370 bytes and passed format validation. Restored that downloaded file through the in-app file chooser as a suffixed independent copy; its version and comment were present while the original remained in the library. Multi-version/reference remapping and atomic non-overwrite behavior have automated coverage.
+- Actual region drag created a second comment; locate was exercised. Region positioning remains version/viewport-dependent: opening the library changes preview width and can correctly produce the existing precision warning. Responsive anchor relocation is not claimed.
+- Limits: the in-app browser download event timed out; its download-to-disk path is not certified. Native browser download plus cross-browser import was verified instead. Physical mid-gesture Escape, touch hardware and native OS fullscreen remain separate gates. Checks use a representative public demo, not arbitrary imported HTML.
+- Local implementation only. No public push, production deployment, cloud sharing or voice recording in this phase.
+
 ## Spec021: content-first presentation (2026-09-07)
 
 - Local tests: 147 across 23 files; typecheck, `/docs/` build and domain-root build pass.

@@ -307,3 +307,69 @@ export async function saveDocument(
     };
   });
 }
+
+// spec022: one read transaction gives a consistent saved-version/review snapshot.
+// Temporary drafts are deliberately outside this transaction and backup format.
+import {
+  freshProjectRecords,
+  validateProjectBackup,
+  type ProjectBackup,
+} from "./project-backup";
+export async function exportProjectBackup(id: string): Promise<ProjectBackup> {
+  const db = await open();
+  const snapshot = await new Promise<unknown>((resolve, reject) => {
+    const tx = db.transaction(["documents", "reviews"], "readonly");
+    const document = tx.objectStore("documents").get(id);
+    const review = tx.objectStore("reviews").get(id);
+    tx.oncomplete = () => {
+      db.close();
+      resolve({
+        format: "opendesign-docs-project",
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        document: document.result,
+        review: review.result ?? { id, revision: 0, threads: [] },
+      });
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(new Error("备份读取失败，请重试。原文档未改动。"));
+    };
+    tx.onerror = () => {
+      /* onabort reports failure */
+    };
+  });
+  return validateProjectBackup(snapshot);
+}
+
+// Both records use add, never put: collision or quota failures abort both writes.
+export async function restoreProjectBackup(
+  value: unknown,
+): Promise<DocumentRecord> {
+  const records = freshProjectRecords(value);
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(["documents", "reviews"], "readwrite");
+    tx.oncomplete = () => {
+      db.close();
+      resolve(records.document);
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(
+        new Error(
+          "恢复失败，可能存储已满或标识冲突。请释放空间后重试；原文档未改动。",
+        ),
+      );
+    };
+    tx.onerror = () => {
+      /* onabort reports failure */
+    };
+    try {
+      tx.objectStore("documents").add(records.document);
+      tx.objectStore("reviews").add(records.review);
+    } catch {
+      tx.abort();
+    }
+  });
+}

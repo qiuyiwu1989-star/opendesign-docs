@@ -1,6 +1,7 @@
 import { Script, createContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { slideBridge } from "./slides-bridge";
+import { validatePlacement } from "./slides";
 
 // Bridge-level event regression tests, not a substitute for native mouse E2E.
 function harness(activate = false) {
@@ -17,10 +18,15 @@ function harness(activate = false) {
     };
     style: any = {
       cssText: "",
-      setProperty: (key: string, value: string) => {
+      setProperty: (key: string, value: string, priority = "") => {
         this.style[key] = value;
+        this.priorities[key] = priority;
       },
+      getPropertyValue: (key: string) => this.style[key] || "",
+      getPropertyPriority: (key: string) => this.priorities[key] || "",
+      removeProperty: (key: string) => { delete this.style[key]; delete this.priorities[key]; },
     };
+    priorities: Record<string, string> = {};
     children: MockElement[] = [];
     parentElement: MockElement | null = null;
     tagName = "DIV";
@@ -143,6 +149,133 @@ function harness(activate = false) {
 }
 
 describe("spec 014 trusted slide gesture bridge", () => {
+  it("spec022 accumulates rapid arrows immediately and ignores stale parent echoes", () => {
+    const h = harness();
+    h.events.click!({ target: h.object });
+    const key = (key: string, shiftKey = false) => h.events.keydown!({ key, shiftKey, preventDefault() {} });
+    const ack = (placement: any) => h.windowEvents.message!({ source: h.parent, data: {
+      channel: "test-channel-123", type: "apply-placement", id: h.object.id, placement,
+    } });
+    key("ArrowRight");
+    key("ArrowRight");
+    const changes = h.messages.filter(m => m.type === "placement");
+    expect(changes.map(m => m.placement.x)).toEqual([1, 2]);
+    ack(changes[0].placement);
+    expect(h.object.style.translate).toBe("2px 0px");
+    key("ArrowDown", true);
+    ack(changes[1].placement);
+    expect(h.object.style.translate).toBe("2px 10px");
+    const latest = h.messages.filter(m => m.type === "placement").at(-1);
+    ack(latest.placement);
+    expect(h.object.style.translate).toBe("2px 10px");
+  });
+  it("spec022 bounds keyboard movement and avoids no-op commits at the boundary", () => {
+    const h = harness();
+    h.object.style.translate = "9999px -10000px";
+    h.events.click!({ target: h.object });
+    for (const key of ["ArrowRight", "ArrowRight", "ArrowUp"]) {
+      h.events.keydown!({ key, shiftKey: true, preventDefault() {} });
+    }
+    expect(h.messages.filter(m => m.type === "placement").map(m => m.placement)).toEqual([
+      { x: 10000, y: -10000, scale: 1 },
+    ]);
+  });
+  it("spec022 resizes vertically with the same fixed-corner geometry", () => {
+    const h = harness();
+    h.events.click!({ target: h.object });
+    h.pointer("pointerdown", 200, 100, h.handle);
+    h.pointer("pointermove", 200, 125, h.handle);
+    h.pointer("pointerup", 200, 125, h.handle);
+    const next = h.messages.find(m => m.type === "placement").placement;
+    expect(next.scale).toBeCloseTo(1.1);
+    expect(next.x).toBeCloseTo(10);
+    expect(next.y).toBeCloseTo(5);
+  });
+  it("spec022 restores exact original inline styles and priority on cancel", () => {
+    for (const event of ["pointercancel", "lostpointercapture", "blur", "resize", "Escape"]) {
+      const h = harness();
+      h.object.style.setProperty("translate", "12px 24px", "");
+      h.object.style.setProperty("scale", "1.2", "important");
+      h.pointer("pointerdown", 100, 100);
+      h.pointer("pointermove", 120, 115);
+      if (event === "blur" || event === "resize") h.windowEvents[event]!({});
+      else if (event === "Escape") h.events.keydown!({ key: "Escape" });
+      else h.pointer(event, 120, 115);
+      h.pointer("pointerup", 120, 115);
+      expect(h.messages.filter(m => m.type === "placement")).toEqual([]);
+      expect(h.object.style.translate).toBe("12px 24px");
+      expect(h.object.style.scale).toBe("1.2");
+      expect(h.object.style.getPropertyPriority("translate")).toBe("");
+      expect(h.object.style.getPropertyPriority("scale")).toBe("important");
+      expect(h.object.captured).toBe(false);
+    }
+  });
+  it("spec022 ignores arrow micro-adjustments during a pointer gesture", () => {
+    const h = harness();
+    h.pointer("pointerdown", 100, 100);
+    h.pointer("pointermove", 120, 115);
+    h.events.keydown!({ key: "ArrowRight", preventDefault() {} });
+    h.pointer("pointerup", 120, 115);
+    expect(h.messages.filter(m => m.type === "placement").map(m => m.placement)).toEqual([
+      { x: 40, y: 30, scale: 1 },
+    ]);
+  });
+  it("spec022 returning to the starting point does not create a version change", () => {
+    const h = harness();
+    h.pointer("pointerdown", 100, 100);
+    h.pointer("pointermove", 120, 115);
+    h.pointer("pointermove", 100, 100);
+    h.pointer("pointerup", 100, 100);
+    expect(h.messages.filter(m => m.type === "placement")).toEqual([]);
+    expect(h.object.style.translate).toBeUndefined();
+  });
+  it("spec022 a late acknowledgement cannot interrupt a new pointer gesture", () => {
+    const h = harness();
+    h.events.click!({ target: h.object });
+    h.events.keydown!({ key: "ArrowRight", preventDefault() {} });
+    const next = h.messages.find(m => m.type === "placement").placement;
+    h.pointer("pointerdown", 100, 100);
+    h.pointer("pointermove", 120, 115);
+    h.windowEvents.message!({ source: h.parent, data: {
+      channel: "test-channel-123", type: "apply-placement", id: h.object.id, placement: next,
+    } });
+    expect(h.object.style.translate).toBe("41px 30px");
+    h.pointer("pointerup", 120, 115);
+    expect(h.messages.filter(m => m.type === "placement").at(-1).placement.x).toBe(41);
+  });
+  it("spec022 recognizes rounded persistence echoes after a fractional resize", () => {
+    const h = harness();
+    h.events.click!({ target: h.object });
+    h.pointer("pointerdown", 200, 100, h.handle);
+    h.pointer("pointermove", 212.345, 107.891, h.handle);
+    h.pointer("pointerup", 212.345, 107.891, h.handle);
+    const rawResize = h.messages.find(m => m.type === "placement").placement;
+    const resizeEcho = validatePlacement(rawResize);
+    expect(rawResize.x).not.toBe(resizeEcho.x);
+    h.events.keydown!({ key: "ArrowRight", preventDefault() {} });
+    const latest = h.messages.filter(m => m.type === "placement").at(-1).placement;
+    h.windowEvents.message!({ source: h.parent, data: {
+      channel: "test-channel-123", type: "apply-placement", id: h.object.id, placement: resizeEcho,
+    } });
+    expect(h.object.style.translate).toBe(`${latest.x}px ${latest.y}px`);
+    const latestEcho = validatePlacement(latest);
+    h.windowEvents.message!({ source: h.parent, data: {
+      channel: "test-channel-123", type: "apply-placement", id: h.object.id, placement: latestEcho,
+    } });
+    expect(h.object.style.translate).toBe(`${latestEcho.x}px ${latestEcho.y}px`);
+    expect(h.object.style.scale).toBe(String(latestEcho.scale));
+  });
+  it("spec022 refuses reflected, collapsed or out-of-range source scales", () => {
+    for (const scale of ["-1", "0", "6"]) {
+      const h = harness();
+      h.object.style.scale = scale;
+      h.pointer("pointerdown", 100, 100);
+      h.pointer("pointermove", 120, 115);
+      h.pointer("pointerup", 120, 115);
+      expect(h.messages.some(m => m.type === "layout-locked")).toBe(true);
+      expect(h.messages.some(m => m.type === "placement")).toBe(false);
+    }
+  });
   it("spec019 clears selection on Escape and does not revive a focused old object", () => {
     const h = harness();
     const key = (key: string) =>
@@ -218,8 +351,8 @@ describe("spec 014 trusted slide gesture bridge", () => {
     h.pointer("pointerdown", 100, 100);
     h.pointer("pointerup", 100, 100);
     h.pointer("pointerdown", 200, 100, h.handle);
-    h.pointer("pointermove", 250, 100, h.handle);
-    h.pointer("pointerup", 250, 100, h.handle);
+    h.pointer("pointermove", 250, 125, h.handle);
+    h.pointer("pointerup", 250, 125, h.handle);
     expect(h.messages.find((m) => m.type === "placement")?.placement).toEqual({
       x: 50,
       y: 25,
@@ -232,8 +365,8 @@ describe("spec 014 trusted slide gesture bridge", () => {
     h.pointer("pointermove", 120, 115);
     h.pointer("pointercancel", 120, 115);
     expect(h.messages.filter((m) => m.type === "placement")).toEqual([]);
-    expect(h.object.style.translate).toBe("0px 0px");
-    expect(h.object.style.scale).toBe("1");
+    expect(h.object.style.translate).toBeUndefined();
+    expect(h.object.style.scale).toBeUndefined();
     expect(h.object.captured).toBe(false);
   });
   it("ignores a second pointer and rejects unauthenticated flushes", () => {

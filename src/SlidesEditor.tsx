@@ -184,7 +184,10 @@ export function SlidesEditor({
     () => (target ? inspectTextRuns(source, target) : null),
     [source, target],
   );
-  const channel = useMemo(() => crypto.randomUUID(), [renderSource, pageIndex]);
+  // A bridge edit mutates the live frame without updating renderSource. Undo may
+  // return to that same string, so an explicit repaint revision is necessary.
+  const [renderRevision, setRenderRevision] = useState(0);
+  const channel = useMemo(() => crypto.randomUUID(), [renderSource, pageIndex, renderRevision]);
   const preview = useMemo(
     () => (page ? createSlidePreview(renderSource, channel, page.id) : ""),
     [renderSource, channel, page?.id],
@@ -212,7 +215,10 @@ export function SlidesEditor({
     draft.onSource(next);
     setTextRevision((value) => value + 1);
     setDownload("");
-    if (repaint) setRenderSource(next);
+    if (repaint) {
+      setRenderSource(next);
+      setRenderRevision((revision) => revision + 1);
+    }
   };
   const select = (id: string) =>
     frame.current?.contentWindow?.postMessage(

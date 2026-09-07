@@ -14,6 +14,7 @@ import {
   type ReviewAnchor,
   type ReviewRecord,
 } from "./review";
+import { reviewView, type ReviewFilter } from "./review-view";
 
 export type ReviewPanelHandle = {
   selectAnchor: (anchor: ReviewAnchor) => void;
@@ -32,6 +33,7 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
       threads: [],
     });
     const [loading, setLoading] = useState(true);
+    const [ready, setReady] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const [author, setAuthor] = useState("本机用户");
@@ -39,26 +41,58 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
     const [anchor, setAnchor] = useState<ReviewAnchor | null>(null);
     const [replyId, setReplyId] = useState("");
     const [reply, setReply] = useState("");
-    const [showResolved, setShowResolved] = useState(false);
+    const [filter, setFilter] = useState<ReviewFilter>("pending");
     const pending = Boolean(body.trim() || reply.trim() || busy);
     const busyRef = useRef(false);
+    const loadingRef = useRef(true);
+    const loadSequence = useRef(0);
+    const saveSequence = useRef(0);
+    const context = useRef({ documentId: record.id, versionId });
+    context.current = { documentId: record.id, versionId };
+    const mounted = useRef(false);
+    const bodyInput = useRef<HTMLTextAreaElement>(null);
+    const replyInput = useRef<HTMLTextAreaElement>(null);
+    const focusRequested = useRef(false);
     useEffect(() => {
       onDirty(pending);
     }, [pending, onDirty]);
-    useEffect(() => {
-      let cancelled = false;
-      void loadReview(record.id)
+    const reload = async () => {
+      if (busyRef.current) return;
+      const sequence = ++loadSequence.current;
+      const documentId = record.id;
+      loadingRef.current = true;
+      setLoading(true);
+      setReady(false);
+      await loadReview(documentId)
         .then((result) => {
-          if (!cancelled) setReview(result);
+          if (mounted.current && sequence === loadSequence.current) {
+            setReview(result);
+            setReady(true);
+            setError("");
+          }
         })
         .catch((e) => {
-          if (!cancelled) setError(String(e.message));
+          if (mounted.current && sequence === loadSequence.current)
+            setError(e instanceof Error ? e.message : "批注读取失败。");
         })
         .finally(() => {
-          if (!cancelled) setLoading(false);
+          if (mounted.current && sequence === loadSequence.current) {
+            loadingRef.current = false;
+            setLoading(false);
+          }
         });
+    };
+    useEffect(() => {
+      mounted.current = true;
+      saveSequence.current++;
+      busyRef.current = false;
+      setBusy(false);
+      setReview({ id: record.id, revision: 0, threads: [] });
+      setError("");
+      void reload();
       return () => {
-        cancelled = true;
+        mounted.current = false;
+        loadSequence.current++;
       };
     }, [record.id]);
     useImperativeHandle(ref, () => ({
@@ -73,29 +107,48 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
         }
         setAnchor(next);
         setBody("");
-        setError("");
+        // A failed initial/reload read must keep its retry action reachable.
+        if (ready) setError("");
+        focusRequested.current = true;
       },
     }));
+    useEffect(() => {
+      if (anchor && !loading && !busy && focusRequested.current) {
+        bodyInput.current?.focus();
+        focusRequested.current = false;
+      }
+    }, [anchor, loading, busy]);
+    useEffect(() => {
+      if (replyId) replyInput.current?.focus();
+    }, [replyId]);
     useEffect(() => {
       setAnchor(null);
       setBody("");
       setReply("");
       setReplyId("");
-    }, [versionId]);
+      setFilter("pending");
+      focusRequested.current = false;
+    }, [record.id, versionId]);
     const persist = async (next: ReviewRecord, success?: () => void) => {
-      if (busyRef.current || loading) return;
+      if (busyRef.current || loadingRef.current || !ready) return;
+      const sequence = ++saveSequence.current;
+      const savedContext = { documentId: record.id, versionId };
       busyRef.current = true;
       setBusy(true);
       setError("");
       try {
         await saveReview(next, review.revision);
+        if (!mounted.current || sequence !== saveSequence.current || context.current.documentId !== savedContext.documentId) return;
         setReview(next);
-        success?.();
+        if (context.current.versionId === savedContext.versionId) success?.();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "批注保存失败。");
+        if (mounted.current && sequence === saveSequence.current && context.current.documentId === savedContext.documentId)
+          setError(e instanceof Error ? e.message : "批注保存失败。");
       } finally {
-        busyRef.current = false;
-        setBusy(false);
+        if (sequence === saveSequence.current) {
+          busyRef.current = false;
+          if (mounted.current) setBusy(false);
+        }
       }
     };
     const act = (build: () => ReviewRecord, success?: () => void) => {
@@ -106,59 +159,51 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
       }
     };
     const version = record.versions.find((v) => v.id === versionId);
-    const threads = review.threads.filter((t) => t.versionId === versionId);
+    const view = reviewView(review.threads, versionId, filter, reply.trim() ? replyId : "");
     return (
       <section className="review-panel" aria-label="本机批注">
-        <h2>一起审阅，从留下意见开始</h2>
-        <p className="review-notice">
-          本机批注 · 尚未云端共享。显示名由自己填写，不代表已验证身份。
-        </p>
+        <header className="review-heading">
+          <h2>批注</h2>
+          <span className="review-status" role="status">{busy ? "保存中…" : "仅本机"}</span>
+        </header>
+        {version && <p className="review-version">{version.label}</p>}
+        <details className="review-details">
+          <summary>审阅设置</summary>
+          <p>批注绑定当前保存版本，仅存于本机。旧版意见请在“版本”中回看。</p>
+          <p>显示名由自己填写，不代表已验证身份；尚未云端共享。</p>
+          <label>
+            显示名
+            <input value={author} maxLength={60} disabled={busy} onChange={(e) => setAuthor(e.target.value)} />
+          </label>
+          <p>点击文字或拖出矩形选择位置。聚焦文字后按 Enter 批注，Shift+Enter 框选。</p>
+        </details>
         {error && (
           <div role="alert" className="error">
             {error}
             <button
-              disabled={busy}
-              onClick={() => {
-                setLoading(true);
-                void loadReview(record.id)
-                  .then(setReview)
-                  .then(() => setError(""))
-                  .catch((e) => setError(e.message))
-                  .finally(() => setLoading(false));
-              }}
+              disabled={busy || loading}
+              onClick={() => void reload()}
             >
-              重新载入批注
+              {loading ? "读取中…" : "重新载入"}
             </button>
+            <small>未发送的内容会保留。</small>
           </div>
         )}
-        <label>
-          我的显示名
-          <input
-            value={author}
-            maxLength={60}
-            disabled={busy}
-            onChange={(e) => setAuthor(e.target.value)}
-          />
-        </label>
         {version ? (
           <>
-            <p>
-              正在审阅：{version.label}
-              。点击文字，或在页面拖出一个矩形；聚焦文字后 Enter
-              添加文字批注，Shift+Enter 框住这段内容。
-            </p>
-            <div className="anchor-summary">
+            <div className={`anchor-summary ${anchor ? "selected" : ""}`}>
               {anchor?.kind === "text" ? (
                 <blockquote>{anchor.quote.slice(0, 250)}</blockquote>
               ) : anchor?.kind === "region" ? (
-                `已框选区域 · ${Math.round(anchor.width)} × ${Math.round(anchor.height)}，视口 ${anchor.viewportWidth}px`
+                "已框选区域"
               ) : (
-                "先在页面选择批注位置"
+                "点击文字或框选区域，留下意见"
               )}
             </div>
+            {anchor && <>
             <label>
-              批注意见
               <textarea
+                ref={bodyInput}
                 aria-label="批注意见"
                 value={body}
                 maxLength={5000}
@@ -169,7 +214,7 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
             </label>
             <button
               className="primary"
-              disabled={!anchor || !body.trim() || loading || busy}
+              disabled={!anchor || !body.trim() || !ready || loading || busy}
               onClick={() =>
                 act(
                   () =>
@@ -186,30 +231,28 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
                 )
               }
             >
-              {busy ? "保存中…" : "保存批注到本机"}
+              {busy ? "保存中…" : "添加批注"}
             </button>
+            <button className="review-cancel" disabled={busy} onClick={() => {
+              if (body.trim() && !window.confirm("放弃当前未保存批注？")) return;
+              setBody("");
+              setAnchor(null);
+            }}>取消</button>
+            </>}
           </>
         ) : (
           <p>切换到“审阅”，在已保存版本上留下意见。</p>
         )}
-        <div className="review-filter">
-          <strong>待处理 {threads.filter((t) => !t.resolved).length}</strong>
-          <label>
-            <input
-              type="checkbox"
-              checked={showResolved}
-              onChange={(e) => setShowResolved(e.target.checked)}
-            />
-            显示已解决
-          </label>
+        <div className="review-filter" role="group" aria-label="筛选批注">
+          <button aria-pressed={filter === "pending"} onClick={() => setFilter("pending")}>待处理 {view.pending}</button>
+          <button aria-pressed={filter === "resolved"} onClick={() => setFilter("resolved")}>已解决 {view.resolved}</button>
         </div>
         {loading ? (
           <p>正在读取批注…</p>
-        ) : threads.length === 0 ? (
-          <p>这个版本还没有批注。旧版本的意见可在“版本”中回看。</p>
+        ) : view.visible.length === 0 ? (
+          <p className="review-empty">{filter === "pending" ? "暂无待处理批注" : "暂无已解决批注"}</p>
         ) : null}
-        {threads
-          .filter((t) => showResolved || !t.resolved)
+        {view.visible
           .map((thread) => (
             <article
               className={`review-thread ${thread.resolved ? "resolved" : ""}`}
@@ -217,17 +260,18 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
             >
               <button
                 className="anchor-link"
-                disabled={!version || busy}
+                aria-label={thread.anchor.kind === "text" ? `定位批注：${thread.anchor.quote.slice(0, 60)}` : "定位框选区域"}
+                disabled={!version || busy || loading}
                 onClick={() => onLocate(thread.anchor)}
               >
                 {thread.anchor.kind === "text"
-                  ? `定位：“${thread.anchor.quote.slice(0, 60)}”`
-                  : `定位框选区域（${thread.anchor.viewportWidth}px）`}
+                  ? `“${thread.anchor.quote.slice(0, 60)}” ↗`
+                  : "框选区域 ↗"}
               </button>
               {thread.messages.map((item) => (
                 <div className="review-message" key={item.id}>
                   <strong>{item.author}</strong>
-                  <time>
+                  <time dateTime={item.createdAt}>
                     {new Date(item.createdAt).toLocaleString("zh-CN")}
                   </time>
                   <p>{item.body}</p>
@@ -235,15 +279,15 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
               ))}
               <div className="review-actions">
                 <button
-                  disabled={busy || loading}
+                  disabled={!ready || busy || loading}
                   onClick={() =>
                     act(() => updateThread(review, thread.id, !thread.resolved))
                   }
                 >
-                  {thread.resolved ? "重新打开" : "标记已解决"}
+                  {thread.resolved ? "重新打开" : "解决"}
                 </button>
                 <button
-                  disabled={busy}
+                  disabled={busy || loading}
                   onClick={() => {
                     if (replyId === thread.id) return;
                     if (reply.trim() && !window.confirm("放弃当前未保存回复？"))
@@ -258,17 +302,18 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
               {replyId === thread.id && (
                 <div>
                   <label>
-                    回复内容
                     <textarea
+                      ref={replyInput}
                       aria-label="回复内容"
                       value={reply}
                       maxLength={5000}
                       disabled={busy}
                       onChange={(e) => setReply(e.target.value)}
+                      placeholder="回复这条意见…"
                     />
                   </label>
                   <button
-                    disabled={!reply.trim() || busy || loading}
+                      disabled={!reply.trim() || !ready || busy || loading}
                     onClick={() =>
                       act(
                         () =>
@@ -284,8 +329,13 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
                       )
                     }
                   >
-                    保存回复
+                    回复
                   </button>
+                  <button className="review-cancel" disabled={busy} onClick={() => {
+                    if (reply.trim() && !window.confirm("放弃当前未保存回复？")) return;
+                    setReply("");
+                    setReplyId("");
+                  }}>取消</button>
                 </div>
               )}
             </article>

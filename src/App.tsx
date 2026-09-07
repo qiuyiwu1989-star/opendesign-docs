@@ -16,6 +16,7 @@ import { DraftWorkspace, type DraftControls } from "./DraftWorkspace";
 import { editHistory, historyOf, moveHistory } from "./history";
 import { validateAnchor, type ReviewAnchor } from "./review";
 import { ReviewPanel, type ReviewPanelHandle } from "./ReviewPanel";
+import { BackupMenu } from "./BackupMenu";
 import "./style.css";
 import "./export.css";
 import "./review.css";
@@ -193,6 +194,29 @@ export default function App() {
         >
           演示页示例
         </button>
+        <BackupMenu
+          record={current}
+          disabled={loading || busy}
+          beforeExport={() => {
+            if (!dirty.current) return true;
+            setError("请先保存版本，再备份。未应用输入和临时草稿不在备份中。");
+            return false;
+          }}
+          beforeRestore={() => {
+            if (!dirty.current) return true;
+            setError("请先保存当前修改或提交批注，再恢复备份。原文档不会被覆盖。");
+            return false;
+          }}
+          onRestored={(record) => {
+            setDocs((rows) => [record, ...rows]);
+            // Restore is asynchronous: don't discard edits made while it ran.
+            if (switchAllowed()) {
+              dirty.current = false;
+              setActive(record.id);
+              setLibraryOpen(false);
+            }
+          }}
+        />
         <input
           ref={input}
           type="file"

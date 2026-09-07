@@ -1,0 +1,42 @@
+.backup-menu {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  font-size: 12px;
+}
+.backup-menu summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.backup-menu p,
+.backup-menu small {
+  color: var(--muted);
+  line-height: 1.65;
+}
+.backup-menu small {
+  display: block;
+  margin-top: 10px;
+  font-size: 11px;
+}
+.backup-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.backup-actions button {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.backup-download {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--accent);
+}
+.backup-menu .backup-error {
+  color: #b03425;
+  overflow-wrap: anywhere;
+}
+.backup-menu summary:focus-visible,
+.backup-menu a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}

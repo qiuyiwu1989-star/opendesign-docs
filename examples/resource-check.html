@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>资源修复体验</title>
+  <!-- Synthetic missing resources. Import into Docs; no private material. -->
+  <link rel="stylesheet" href="./missing-theme.css">
+  <style>
+    @font-face { font-family: MissingDemo; src: url('https://example.invalid/demo.woff2'); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #e5ebe8; color: #243c32; font-family: MissingDemo, sans-serif; }
+    .slide { width: 1280px; height: 720px; position: relative; background: #f5f6ef; margin: 24px auto; overflow: hidden; }
+    h1 { position: absolute; left: 100px; top: 110px; font-size: 62px; margin: 0; width: 1000px; }
+    p { position: absolute; left: 100px; top: 220px; width: 600px; font-size: 26px; line-height: 1.6; }
+    img { position: absolute; left: 860px; top: 280px; width: 240px; height: 240px; object-fit: contain; border: 1px solid #b6c7bd; border-radius: 16px; }
+  </style>
+</head>
+<body>
+  <section class="slide">
+    <h1>让缺失资源，有迹可循。</h1>
+    <p>展开“资源”，为缺失的封面选择一张本机图片。试试撤销、重做，再保存版本。</p>
+    <img src="./missing-cover.png" alt="示例封面" width="240" height="240">
+  </section>
+</body>
+</html>

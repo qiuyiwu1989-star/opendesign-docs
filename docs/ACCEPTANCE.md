@@ -1,5 +1,15 @@
 # Acceptance record
 
+## Spec023: resource diagnostics and local image repair (2026-09-07)
+
+- Automated: 188 tests across 27 files, typecheck and both base-path builds pass. New tests cover static CSS/font/image detection, inert contexts, responsive candidates, duplicate attributes, invalid bitmap/size limits, exact source preservation, undo/redo and version persistence, bounded read-only panel rendering, and session-selection fallback.
+- Synthetic `examples/resource-check.html` imported through the actual file chooser. Panel initially reported three independent issues: missing local stylesheet, isolated external font and missing local IMG. No external probe was performed or added.
+- Slide view: selected a real local PNG. Image issue disappeared while font and stylesheet issues remained. Preview IMG decoded (`naturalWidth=1024`); width/height source attributes stayed 240. Undo restored missing-image state (preview removes its original local src), redo restored the embedded bitmap, and save created version 2. After refresh and reselect, the image still decoded.
+- QA found refresh chose the first database row. Added safe per-tab selected-document ID preference; after explicitly selecting the fixture again, a fresh reload opened `resource-check.html` with its saved image and two remaining resource issues.
+- Long-document view: loaded the original as a draft, replaced the image with a different local PNG, and saved version 3; original and slide-edited versions remained available. Reviewing the original reported its own three issues and disabled image replacement. Returned to the latest presentation afterward.
+- Async upload uses source/context epoch and current-disabled guards; an artificial delayed decode race was not injected in-browser. Actual image export-to-disk/reimport was not repeated in this phase; exact source/version persistence has tests and prior export acceptance remains separate. Full CSS coverage, malformed image decoding diagnostics, font import, picture repair and arbitrary HTML compatibility are not claimed.
+- No dependencies, schema migrations, public push or deployment added. Test image files were local UI inputs only and are not distributed in this repository.
+
 ## Spec022: everyday editing reliability (2026-09-07)
 
 - Final automated gate: 176 tests across 25 files, typecheck, `/docs/` build, domain-root build and whitespace checks pass. Includes backup validation/atomic failure/collision coverage, stale rounded placement acknowledgments, cancellation and review draft retention. No schema migration.

@@ -10,7 +10,7 @@ import {
 } from "./slides";
 import { saveDocument, type DocumentRecord } from "./store";
 import "./slides.css";
-import { repairEmbeddedImages } from "./image-repair";
+import { ResourcePanel } from "./ResourcePanel";
 import { inspectTextRuns, patchTextRuns } from "./text-runs";
 import { TextRunInspector } from "./TextRunInspector";
 import type { DraftControls } from "./DraftWorkspace";
@@ -156,7 +156,6 @@ export function SlidesEditor({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const imageRepair = useMemo(() => repairEmbeddedImages(source), [source]);
   const pages = useMemo(() => inspectSlides(source), [source]),
     page = pages[Math.min(pageIndex, Math.max(0, pages.length - 1))];
   useEffect(() => {
@@ -785,18 +784,13 @@ export function SlidesEditor({
             {size} · 第 {pageIndex + 1} / {pages.length} 页
           </span>
         </div>
-        {imageRepair.count > 0 && (
-          <div className="export-banner">
-            发现 {imageRepair.count} 处内嵌图片引用的引号或括号不完整。
-            <button
-              onClick={() => flush(() => commit(imageRepair.source))}
-              disabled={!ready || saving}
-            >
-              修复图片引用
-            </button>
-            <span>只改工作副本，可撤销。</span>
-          </div>
-        )}
+        <ResourcePanel source={source} contextKey={record.versions.at(-1)!.id}
+          disabled={!ready || saving || readingImage || direct || textDraft || styleDraft || positionDraft}
+          onApply={(expected, next) => {
+            if (sourceRef.current !== expected || busy.current) throw new Error("文档已变化，请重试。");
+            commit(next);
+            resetSelection();
+          }} />
         {error && (
           <div role="alert" className="error">
             {error}

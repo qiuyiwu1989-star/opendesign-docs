@@ -2,7 +2,11 @@
 
 Goal: HTML → direct editing → saved revision → shared review → revision and delivery.
 
-## Current local phase — spec022
+## Current local phase — spec023 complete
+
+Static resource diagnostics and local standalone-image repair now work in both views. The panel stays collapsed, distinguishes preview isolation from local-file dependencies, and does not load external resources. Real replacement/undo/version/refresh checks passed; this is not full CSS or font compatibility. Proposed next asset work: local font embedding and complex backgrounds/picture, subject to a bounded compatibility spec. Physical device/fullscreen gates remain in TASKS.md.
+
+## Previous local phase — spec022
 
 User approved defining and executing the next phase in parallel. Goal: dependable everyday editing, not more top-level screens.
 

@@ -30,6 +30,13 @@ Open http://127.0.0.1:5175/docs/ and choose **演示页示例** or import a trus
 - Undo/redo, local automatic drafts, immutable saved versions and HTML export.
 - Local version-bound comments, replies and resolution. These are not shared cloud comments.
 - Portable JSON backups of saved versions and their comments; restore as an independent copy.
+- Collapsed resource diagnostics in both views: common image/font/CSS references, local IMG replacement and narrow embedded-image syntax repair. Refresh returns to the current document in the same tab when session storage is available.
+
+## Missing resources
+
+Open **资源** above the page. A blocked remote image is not necessarily a broken link: previews intentionally do not fetch external assets. For a supported standalone image choose **选本机图片**; the validated PNG/JPEG/WebP is embedded while existing dimensions and styles remain. Replacement removes that image's `srcset` candidates. Undo, save a version and export as usual.
+
+The scanner is static and partial, not a network or decode test. Fonts, external stylesheets, `picture`, complex CSS and script-generated assets are not automatically repaired. Imported scripts may still change images when the exported original HTML is opened. Try the synthetic [resource check sample](examples/resource-check.html) by importing it into Docs.
 
 ## Project backup
 

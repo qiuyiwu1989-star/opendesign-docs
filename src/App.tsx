@@ -17,6 +17,8 @@ import { editHistory, historyOf, moveHistory } from "./history";
 import { validateAnchor, type ReviewAnchor } from "./review";
 import { ReviewPanel, type ReviewPanelHandle } from "./ReviewPanel";
 import { BackupMenu } from "./BackupMenu";
+import { ResourcePanel } from "./ResourcePanel";
+import { rememberSelection, restoredSelection } from "./workspace-selection";
 import "./style.css";
 import "./export.css";
 import "./review.css";
@@ -51,11 +53,14 @@ export default function App() {
     void listDocuments()
       .then((rows) => {
         setDocs(rows);
-        setActive(rows[0]?.id ?? "");
+        setActive(restoredSelection(rows.map(row => row.id)));
       })
       .catch((e) => setError(message(e)))
       .finally(() => setLoading(false));
   }, []);
+  useEffect(() => {
+    if (!loading) rememberSelection(active);
+  }, [active, loading]);
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
       if (dirty.current) e.preventDefault();
@@ -765,6 +770,15 @@ function Editor({
           <button onClick={() => setDownloadUrl("")}>关闭</button>
         </div>
       )}
+      <ResourcePanel source={reviewVersion?.source ?? source}
+        contextKey={`${record.versions.at(-1)!.id}:${reviewVersionId ?? ""}:${reviewing}`}
+        disabled={!ready || saving || reviewing || directEditing || pendingText}
+        onApply={(expected, next) => {
+          if (sourceRef.current !== expected || savingRef.current) throw new Error("文档已变化，请重试。");
+          commit(next);
+          setRenderSource(next);
+          setSelected("");
+        }} />
       <div className="editor-body">
         <div className="page-container">
           <iframe
@@ -867,8 +881,8 @@ function Editor({
                   <dd>{inspection.relativeResources}</dd>
                 </dl>
                 <p>
-                  依赖脚本的图表、切换和动效可能缺失。CSS
-                  内部的资源引用也被禁用，但尚未计入上述统计。
+                  依赖脚本的图表、切换和动效可能缺失。上述统计仅含 HTML 属性；
+                  常见 CSS 引用见“资源”面板。外部 CSS 资源也不在预览中加载。
                 </p>
               </details>
             </>

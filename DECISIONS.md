@@ -1,5 +1,8 @@
 # Decisions
 
+- 2026-09-07: Spec023 follows the user's continuation of the proposed resource-diagnostics phase. Use one collapsed panel in both views and static inspection only. Distinguish preview isolation from unpackaged local paths; do not claim a remote URL is broken without a check. Standalone IMG replacement embeds a validated local bitmap, preserves layout attributes and explicitly removes srcset. No network requests, font loading or whole-tree serialization. Complex/script-driven assets are outside automatic repair.
+- 2026-09-07: Resource save/reload QA found that App always opened the first IndexedDB row. Remember the selected document ID in sessionStorage, per tab; validate against loaded document IDs and fall back on denied storage. This is a UI preference, not a document migration or cross-tab lock.
+
 - 2026-09-07: User authorized planning and parallel implementation of the next development phase. Spec022 concentrates on everyday local editing: gesture correctness, concise review, and portable saved-version/comment backups. Main integration adds forced iframe revision on repaint so undo cannot leave stale visuals. These are implementation choices within that scope, not authorization for deployment or public push. Cloud, voice and AI remain deferred.
 - 2026-09-07: Project JSON backup is distinct from HTML export: retain saved versions and their comments, exclude temporary drafts/unsent input, validate limits and references, restore atomically under fresh IDs as a named copy. Preserve the original document and existing database schema.
 

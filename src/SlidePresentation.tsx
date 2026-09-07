@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SlidePage } from "./slides";
 import { createThumbnailFactory } from "./thumbnail-preview";
+import { createPresentationControls } from "./presentation-controls";
 import "./slide-presentation.css";
 
 export function presentationIndexForKey(
@@ -36,9 +37,11 @@ export function SlidePresentation({
     ),
   );
   const [scale, setScale] = useState(1);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const exit = useRef<HTMLButtonElement>(null);
+  const controls = useRef<HTMLElement>(null);
   const leaving = useRef(false);
   const indexRef = useRef(index);
   indexRef.current = index;
@@ -71,13 +74,39 @@ export function SlidePresentation({
     document.body.style.overflow = "hidden";
     let wasFullscreen = false;
     const fullscreenChanged = () => {
+      setIsFullscreen(document.fullscreenElement === root.current);
       if (document.fullscreenElement === root.current) wasFullscreen = true;
       else if (wasFullscreen) leave();
     };
     document.addEventListener("fullscreenchange", fullscreenChanged);
-    exit.current?.focus();
+    root.current?.focus();
     fullscreen();
+    const surface = root.current;
+    const toolbar = controls.current;
+    let hovering = false;
+    let keyboardFocus = false;
+    const idle = createPresentationControls((visible) => {
+      if (!visible && toolbar?.contains(document.activeElement)) surface?.focus();
+      setControlsVisible(visible);
+    }, () => hovering || (keyboardFocus && !!toolbar?.contains(document.activeElement)));
+    const pointerDown = (event: PointerEvent) => {
+      keyboardFocus = false;
+      if (!toolbar?.contains(event.target as Node)) surface?.focus();
+      idle.wake();
+    };
+    const pointerEnter = (event: PointerEvent) => {
+      hovering = event.pointerType !== "touch";
+      idle.wake();
+    };
+    const pointerLeave = () => { hovering = false; idle.wake(); };
+    surface?.addEventListener("pointermove", idle.wake);
+    surface?.addEventListener("pointerdown", pointerDown);
+    toolbar?.addEventListener("pointerenter", pointerEnter);
+    toolbar?.addEventListener("pointerleave", pointerLeave);
+    idle.wake();
     const keyboard = (event: KeyboardEvent) => {
+      // Preserve native button activation instead of treating Space as next-page.
+      if (event.key === " " && toolbar?.contains(document.activeElement)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         leave();
@@ -90,6 +119,8 @@ export function SlidePresentation({
           (n) => presentationIndexForKey(n, pages.length, event.key) ?? n,
         );
       } else if (event.key === "Tab") {
+        keyboardFocus = true;
+        idle.wake();
         const buttons = [
           ...(root.current?.querySelectorAll<HTMLButtonElement>(
             "button:not(:disabled)",
@@ -100,8 +131,9 @@ export function SlidePresentation({
         );
         event.preventDefault();
         buttons[
-          (position + (event.shiftKey ? buttons.length - 1 : 1)) %
-            buttons.length
+          position < 0
+            ? (event.shiftKey ? buttons.length - 1 : 0)
+            : (position + (event.shiftKey ? buttons.length - 1 : 1)) % buttons.length
         ]?.focus();
       }
     };
@@ -109,6 +141,11 @@ export function SlidePresentation({
     return () => {
       document.removeEventListener("keydown", keyboard, true);
       document.removeEventListener("fullscreenchange", fullscreenChanged);
+      surface?.removeEventListener("pointermove", idle.wake);
+      surface?.removeEventListener("pointerdown", pointerDown);
+      toolbar?.removeEventListener("pointerenter", pointerEnter);
+      toolbar?.removeEventListener("pointerleave", pointerLeave);
+      idle.dispose();
       document.body.style.overflow = previousOverflow;
       // The parent restores focus after removing inert from the editor.
     };
@@ -130,7 +167,8 @@ export function SlidePresentation({
   return (
     <div
       ref={root}
-      className="slide-presentation"
+      className={`slide-presentation${controlsVisible ? "" : " is-idle"}`}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label="幻灯片放映"
@@ -146,11 +184,12 @@ export function SlidePresentation({
           style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
         />
       </div>
-      <nav className="slide-presentation-controls" aria-label="放映控制">
+      <nav ref={controls} className="slide-presentation-controls" aria-label="放映控制">
         <button
           disabled={index === 0}
           onClick={() => setIndex((n) => n - 1)}
           aria-label="上一页"
+          title="上一页（←）"
         >
           ←
         </button>
@@ -161,12 +200,13 @@ export function SlidePresentation({
           disabled={index === pages.length - 1}
           onClick={() => setIndex((n) => n + 1)}
           aria-label="下一页"
+          title="下一页（→）"
         >
           →
         </button>
-        <button onClick={fullscreen}>全屏</button>
-        <button ref={exit} onClick={leave}>
-          结束放映
+        {!isFullscreen && <button onClick={fullscreen} aria-label="全屏" title="全屏">⛶</button>}
+        <button onClick={leave} aria-label="结束放映" title="结束放映（Esc）">
+          ×
         </button>
       </nav>
     </div>

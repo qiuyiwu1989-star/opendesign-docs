@@ -1,5 +1,14 @@
 # Acceptance record
 
+## Spec021: content-first presentation (2026-09-07)
+
+- Local tests: 147 across 23 files; typecheck, `/docs/` build and domain-root build pass.
+- Browser geometry at 1440 × 900: stage 1440 × 900; 16:9 frame 1440 × 810 centered with 45px top/bottom letterboxing. Toolbar is an absolute overlay, not reserved layout height.
+- At 1080 × 1920: frame 1080 × 607.5, centered without crop. Portrait black space is aspect-ratio letterboxing, not a controls footer.
+- Confirmed idle class/opacity 0; pointer click wakes it; Tab reveals controls and keeps them visible while focused beyond the idle interval. Shift+Tab reaches exit; Space activates exit; Escape restores editor focus and the current page.
+- Browser fullscreen event path hides the redundant fullscreen button. Physical OS fullscreen exit, denied-fullscreen fallback and real touch hover behavior have not been newly certified by this pass. Existing native editor drag/resize and region annotation gates remain separate.
+- Imported source, export, data schema and production services were not changed. This iteration is local, not a pushed/deployed release.
+
 ## Inherited baseline
 
 The upstream spec019 record reports 144 tests across 22 files, typecheck and builds passing. Browser checks cover local edits, version save/reload, actual HTML download/reimport, isolated presentation keyboard navigation and selection/focus synchronization.

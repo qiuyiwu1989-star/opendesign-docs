@@ -16,3 +16,5 @@ Standalone React, TypeScript, Vite, parse5, Vitest. Browser IndexedDB `opendesig
 
 ## Current state
 Independent extraction from upstream 576ccbe; spec020. MIT source attribution preserved. First public snapshot is alpha, not a production deployment. See TASKS.md and docs/ACCEPTANCE.md for verification status.
+
+Spec021: content-first presentation uses a full-viewport stage with compact auto-hiding overlay controls. Preserve proportional fitting; never reserve footer height for presentation controls. Local implementation does not imply production deployment.

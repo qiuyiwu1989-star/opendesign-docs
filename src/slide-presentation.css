@@ -4,15 +4,13 @@
   z-index: 10000;
   background: #171b1d;
   color: #fff;
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
+  padding: 0;
   box-sizing: border-box;
+  outline: none;
 }
 .slide-presentation-stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 .slide-presentation-stage iframe {
@@ -27,25 +25,56 @@
   background: #fff;
 }
 .slide-presentation-controls {
+  position: absolute;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 12px 0 0;
-  flex-shrink: 0;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #ffffff24;
+  border-radius: 12px;
+  background: #202526e8;
+  box-shadow: 0 3px 16px #0003;
+  transition: opacity 160ms ease;
 }
 .slide-presentation-controls button {
-  background: #303638;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: #fff;
-  border-color: #50585b;
+  font-size: 20px;
+  line-height: 1;
+}
+.slide-presentation-controls button:hover {
+  background: #ffffff20;
+}
+.slide-presentation.is-idle {
+  cursor: none;
+}
+.slide-presentation.is-idle .slide-presentation-controls {
+  opacity: 0;
+  pointer-events: none;
 }
 .slide-presentation-controls button:disabled {
   opacity: 0.35;
 }
 .slide-presentation-controls span {
   font-variant-numeric: tabular-nums;
-  min-width: 54px;
+  min-width: 46px;
+  font-size: 13px;
   text-align: center;
+}
+@media (pointer: coarse) {
+  .slide-presentation-controls button { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slide-presentation-controls { transition: none; }
 }
 .slide-editor-surface {
   display: contents;

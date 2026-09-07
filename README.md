@@ -36,7 +36,13 @@ Open http://127.0.0.1:5175/docs/ and choose **演示页示例** or import a trus
 
 Open **资源** above the page. A blocked remote image is not necessarily a broken link: previews intentionally do not fetch external assets. For a supported standalone image choose **选本机图片**; the validated PNG/JPEG/WebP is embedded while existing dimensions and styles remain. Replacement removes that image's `srcset` candidates. Undo, save a version and export as usual.
 
-The scanner is static and partial, not a network or decode test. Fonts, external stylesheets, `picture`, complex CSS and script-generated assets are not automatically repaired. Imported scripts may still change images when the exported original HTML is opened. Try the synthetic [resource check sample](examples/resource-check.html) by importing it into Docs.
+The scanner is static and partial, not a network or decode test. External stylesheets, `picture`, complex CSS and script-generated assets are not automatically repaired. Imported scripts may still change images when the exported original HTML is opened. Try the synthetic [resource check sample](examples/resource-check.html) by importing it into Docs.
+
+## Local fonts
+
+For a recognizable top-level `@font-face` inside an inline `<style>`, **资源 → confirm embedding rights → 选本机字体** replaces that declaration's `src` with an embedded WOFF/WOFF2. Family, weight, style and other descriptors are preserved. It does not install a system font or switch every text object to a new family. Try [font-check.html](examples/font-check.html).
+
+File limit: 2 MiB; final HTML: 5 MiB. Header checks follow [WOFF](https://www.w3.org/TR/WOFF/) and [WOFF2](https://www.w3.org/TR/WOFF2/), followed by browser decoding. The 12 MiB declared expansion limit is advisory for WOFF2, not a guaranteed memory ceiling or independent security audit. No TTF/OTF conversion or collections. Nested/escaped/ambiguous CSS rules remain unsupported. Confirm your rights before embedding; the app does not verify licensing or glyph coverage. Check line breaks after replacement. Saved versions, exported HTML and project backups retain embedded bytes.
 
 ## Project backup
 

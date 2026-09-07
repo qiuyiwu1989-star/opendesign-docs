@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Local font check</title>
+  <style>
+    @font-face { font-family: 'Demo Serif'; src: url('https://example.invalid/demo-serif.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #e6ebe7; }
+    .slide { width: 1280px; height: 720px; position: relative; overflow: hidden; margin: 24px auto; background: #f7f4e9; color: #273b32; font-family: 'Demo Serif', serif; font-weight: 600; }
+    h1 { position: absolute; left: 100px; top: 160px; width: 1000px; font-size: 84px; font-weight: inherit; margin: 0; }
+    p { position: absolute; left: 104px; top: 400px; width: 900px; font-size: 32px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <section class="slide">
+    <h1>Good ideas deserve<br>a distinctive voice.</h1>
+    <p>Choose a local WOFF or WOFF2 in Resources.<br>Undo, save a version, and refresh to compare.</p>
+  </section>
+</body>
+</html>

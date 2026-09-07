@@ -10,4 +10,7 @@
 .resource-label { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #63736e; }
 .resource-row small { color: #63736e; }
 .resource-row button { flex-shrink: 0; padding: 7px 10px; font-size: 12px; }
+.resource-font-rights { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 10px 0; }
+.resource-font-rights input { width: auto; margin: 0; }
+.resource-fonts { border-top: 1px solid #d9e1de; }
 @media (max-width: 600px) { .resource-row { align-items: flex-start; flex-direction: column; gap: 6px; } .resource-row > div { width: 100%; } }

@@ -94,7 +94,7 @@ export function inspectResources(source: string): ResourceIssue[] {
     if (!reason) return;
     const safeLabel = /^data:/i.test(label) ? "内嵌资源" : label;
     issues.push({ id: `resource-${issues.length}`, kind, label: safeLabel.slice(0, 180), reason,
-      hint: kind === "字体" ? "暂用回退字体；本轮不导入字体。" : kind === "样式" ? "请从原文件将样式内联后重新导入。" : "保留原引用；导出时仍需原资源。", ...extra });
+      hint: kind === "字体" ? "暂用回退字体；可识别的字体声明可在下方替换。" : kind === "样式" ? "请从原文件将样式内联后重新导入。" : "保留原引用；导出时仍需原资源。", ...extra });
   };
   const css = (value: string) => {
     for (const ref of cssReferences(value)) {

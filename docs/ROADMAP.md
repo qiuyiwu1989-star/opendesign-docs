@@ -2,7 +2,11 @@
 
 Goal: HTML → direct editing → saved revision → shared review → revision and delivery.
 
-## Current local phase — spec023 complete
+## Current local phase — spec024 complete
+
+Local WOFF/WOFF2 repair is available for conservative top-level inline font-face declarations. Preserve the original CSS descriptors and replace only the font source after acknowledgment and decode. Actual WOFF2 undo/save/refresh and long-document rendering were checked. Next proposed asset work is complex backgrounds/picture handling; font compatibility expansion still needs representative fixtures. Cloud/voice and deployment remain separate decisions.
+
+## Previous local phase — spec023
 
 Static resource diagnostics and local standalone-image repair now work in both views. The panel stays collapsed, distinguishes preview isolation from local-file dependencies, and does not load external resources. Real replacement/undo/version/refresh checks passed; this is not full CSS or font compatibility. Proposed next asset work: local font embedding and complex backgrounds/picture, subject to a bounded compatibility spec. Physical device/fullscreen gates remain in TASKS.md.
 

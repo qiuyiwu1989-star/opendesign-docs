@@ -1,5 +1,15 @@
 # Acceptance record
 
+## Spec024: local font repair (2026-09-07)
+
+- Final gate: 198 tests across 28 files, typecheck, `/docs/` build, domain-root build and whitespace checks passed.
+- New coverage: WOFF/WOFF2 signatures, size/offset checks, mismatched extensions, collection rejection, decoder rejection/timeout, immutable decoded handles, conservative CSS spans, duplicate/escaped/nested/inert rejection, exact source preservation, undo/redo, stale-result guard and saved-version/project-backup round trips. No new dependency or schema migration.
+- Imported synthetic `examples/font-check.html` into the existing local browser. Font button remained disabled until explicit embedding acknowledgment. Used an existing local Fraunces Latin 600 WOFF2 with its adjacent OFL file inspected; neither font binary nor private samples were committed.
+- Before repair, the remote-font reference was isolated. After local selection, the live iframe contained an embedded font-face source; FontFaceSet size was 1, status loaded, and `check` for 600 84px Demo Serif and sample Latin text returned true. Computed weight remained 600. At the unchanged viewport, heading height changed from approximately 222.89 to 194.56px, illustrating that font replacement changes metrics.
+- Undo removed embedded source and font check returned false; redo restored it. Save created version 2. Refresh reopened the same document with embedded source and successful font check. Long-document view also passed the font check at weight 600. Reviewing the original version restored its missing-font diagnostic and disabled both rights acknowledgment and repair.
+- WOFF1 has header/mock-decoder coverage, not a real-file browser pass. No claim of CJK glyph coverage, full variable-font compatibility, complete CSS parsing, fixed memory allocation bound, license verification or full font-security validation. Late decode behavior is guard-unit-tested, not browser-race-injected. New font HTML download/reimport was not independently repeated; saved/backup bytes are covered separately.
+- Header references: [W3C WOFF](https://www.w3.org/TR/WOFF/) and [W3C WOFF2](https://www.w3.org/TR/WOFF2/). The WOFF2 totalSfntSize is advisory; browser decoding remains necessary. No remote fetch, public push or deployment in this phase.
+
 ## Spec023: resource diagnostics and local image repair (2026-09-07)
 
 - Automated: 188 tests across 27 files, typecheck and both base-path builds pass. New tests cover static CSS/font/image detection, inert contexts, responsive candidates, duplicate attributes, invalid bitmap/size limits, exact source preservation, undo/redo and version persistence, bounded read-only panel rendering, and session-selection fallback.

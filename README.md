@@ -36,7 +36,9 @@ Open http://127.0.0.1:5175/docs/ and choose **演示页示例** or import a trus
 
 Open **资源** above the page. A blocked remote image is not necessarily a broken link: previews intentionally do not fetch external assets. For a supported standalone image choose **选本机图片**; the validated PNG/JPEG/WebP is embedded while existing dimensions and styles remain. Replacement removes that image's `srcset` candidates. Undo, save a version and export as usual.
 
-The scanner is static and partial, not a network or decode test. External stylesheets, `picture`, complex CSS and script-generated assets are not automatically repaired. Imported scripts may still change images when the exported original HTML is opened. Try the synthetic [resource check sample](examples/resource-check.html) by importing it into Docs.
+The scanner loads and runs when you first open **资源**; it is static and partial, not a network or decode test. Supported static `picture` images offer **统一图片**, with explicit confirmation that all screen sizes will use one image. Original candidates are removed; check crops and proportions afterward. Complex CSS, external stylesheets and script-generated assets are not automatically repaired. Imported scripts may still change images when exported HTML is opened. Try the synthetic [resource check](examples/resource-check.html) or [responsive image check](examples/picture-check.html).
+
+Slide editing loads only when needed. Resource tools remain mounted after first opening, so collapsing the panel does not discard an in-progress choice. Both build commands run `check:bundle`, which counts entry plus transitive static JS imports and enforces separate initial/slide-view budgets. Bundle size improvements do not imply a measured page-speed gain.
 
 ## Local fonts
 

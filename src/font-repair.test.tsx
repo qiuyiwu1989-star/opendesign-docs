@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { fontResultIsCurrent, inspectFontHeader, MAX_FONT_BYTES, prepareLocalFont } from "./font-import";
 import { inspectFontTargets, replaceFontSource } from "./font-repair";
-import { ResourcePanel } from "./ResourcePanel";
+import { ResourcePanelBody as ResourcePanel } from "./ResourcePanelBody";
 import { inspectResources } from "./resource-diagnostics";
 import { createPreview } from "./html";
 import { editHistory, historyOf, moveHistory } from "./history";

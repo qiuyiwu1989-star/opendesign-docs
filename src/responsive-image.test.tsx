@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { inspectPictureTargets, replacePictureImage } from "./responsive-image";
 import { inspectResources } from "./resource-diagnostics";
-import { ResourcePanel } from "./ResourcePanel";
+import { ResourcePanelBody as ResourcePanel } from "./ResourcePanelBody";
 import { createPreview } from "./html";
 import { historyOf, editHistory, moveHistory } from "./history";
 import { saveDocument, listDocuments, exportProjectBackup } from "./store";

@@ -8,8 +8,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5175 --strictPort",
-    "build": "tsc --noEmit && vite build",
-    "build:domain": "tsc --noEmit && vite build --base=/",
+    "build": "tsc --noEmit && vite build && npm run check:bundle",
+    "build:domain": "tsc --noEmit && vite build --base=/ && npm run check:bundle",
+    "check:bundle": "tsx scripts/check-bundle.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "audit": "tsx scripts/audit.ts"

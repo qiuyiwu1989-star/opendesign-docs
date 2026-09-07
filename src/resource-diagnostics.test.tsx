@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cssReferences, inspectResources, replaceResourceImage } from "./resource-diagnostics";
-import { ResourcePanel } from "./ResourcePanel";
+import { ResourcePanelBody as ResourcePanel } from "./ResourcePanelBody";
 import { createPreview } from "./html";
 import { historyOf, editHistory, moveHistory } from "./history";
 import { saveDocument, listDocuments } from "./store";

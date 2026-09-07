@@ -5,13 +5,15 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type ComponentProps,
 } from "react";
 import { createPreview, inspectHtml, patchText } from "./html";
 import { listDocuments, saveDocument, type DocumentRecord } from "./store";
 import { demo, slideDemo } from "./demo";
 import { inspectSlides } from "./slides";
 import { MAX_DOCUMENT_BYTES } from "./slide-insert";
-import { SlidesEditor } from "./SlidesEditor";
+import { deferredFeature } from "./deferred-feature";
+import type { SlidesEditor as SlideEditorView } from "./SlidesEditor";
 import { DraftWorkspace, type DraftControls } from "./DraftWorkspace";
 import { editHistory, historyOf, moveHistory } from "./history";
 import { validateAnchor, type ReviewAnchor } from "./review";
@@ -22,6 +24,8 @@ import { rememberSelection, restoredSelection } from "./workspace-selection";
 import "./style.css";
 import "./export.css";
 import "./review.css";
+
+const SlidesEditor = deferredFeature<ComponentProps<typeof SlideEditorView>>(() => import("./SlidesEditor").then(m => ({ default: m.SlidesEditor })), "演示编辑器");
 
 const newDocument = (name: string, source: string): DocumentRecord => ({
   id: crypto.randomUUID(),

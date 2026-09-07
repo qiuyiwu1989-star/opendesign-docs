@@ -599,3 +599,4 @@ input {
     justify-content: flex-start;
   }
 }
+:root .feature-message { padding: 12px 16px; display: flex; align-items: center; gap: 12px; color: #63736e; font-size: 13px; }

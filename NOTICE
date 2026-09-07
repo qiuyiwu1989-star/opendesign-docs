@@ -1,0 +1,11 @@
+OpenDesign Docs was extracted from the OpenDesign project's docs-web app
+at source revision 576ccbe. The editor source was not rewritten.
+
+The upstream OpenDesign Project License applies MIT to source code.
+That copyright and permission notice is preserved in LICENSE.
+No curated third-party design dataset or third-party website asset library
+is included. The bundled OpenDesign icon is used as a test fixture;
+project names and logos do not grant trademark rights.
+
+Historical test names refer to upstream specs 013–019. Repository extraction
+is tracked here by spec 020; upstream commit history was not imported.

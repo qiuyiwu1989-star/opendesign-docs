@@ -1,0 +1,45 @@
+.export-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.export-banner span {
+  flex: 1;
+}
+.export-banner a {
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.export-banner button {
+  padding: 5px 9px;
+}
+.library,
+.editor-body {
+  min-width: 0;
+}
+@media (max-width: 800px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .export-banner {
+    flex-wrap: wrap;
+  }
+  .export-banner span {
+    flex-basis: 100%;
+  }
+  .page-container {
+    width: 100%;
+  }
+  .library nav {
+    width: 100%;
+  }
+  .doc-item {
+    flex-shrink: 0;
+  }
+}

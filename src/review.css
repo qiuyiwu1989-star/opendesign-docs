@@ -1,0 +1,96 @@
+.review-panel label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+}
+.review-panel textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+}
+.review-notice {
+  padding: 10px 12px;
+  background: #f2f6f3;
+  border-radius: 8px;
+}
+.anchor-summary {
+  padding: 10px;
+  border-left: 3px solid #d78b21;
+  background: #fdf8ed;
+  overflow-wrap: anywhere;
+}
+.anchor-summary blockquote {
+  margin: 0;
+  max-height: 120px;
+  overflow: auto;
+}
+.review-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 24px;
+}
+.review-filter label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.review-filter input {
+  width: auto;
+}
+.review-thread {
+  margin: 14px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+}
+.review-thread.resolved {
+  background: #f3f6f4;
+}
+.review-thread .anchor-link {
+  white-space: normal;
+  text-align: left;
+  width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--accent);
+}
+.review-message {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0 4px;
+}
+.review-message time {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+}
+.review-message p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.review-panel .error {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.panel-tabs {
+  gap: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  .review-notice,
+  .review-thread.resolved {
+    background: #303d34;
+  }
+  .anchor-summary {
+    background: #3c3627;
+  }
+}

@@ -1,0 +1,68 @@
+.slide-pages.slide-thumbnails {
+  padding: 12px 8px;
+  gap: 10px;
+}
+.slide-pages.slide-thumbnails > button {
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 5px;
+  border-radius: 7px;
+}
+.slide-thumbnail-view {
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #00000012;
+  color: #52615e;
+}
+.slide-thumbnail-view iframe {
+  display: block;
+  position: absolute;
+  inset: 0;
+  border: 0;
+  max-width: none;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+.slide-thumbnail-placeholder {
+  display: flex;
+  height: 100%;
+  padding: 12px;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.slide-pages .slide-thumbnail-label {
+  display: flex;
+  gap: 6px;
+  padding: 7px 2px 1px;
+  text-align: left;
+  align-items: baseline;
+}
+.slide-pages .slide-thumbnail-label > span {
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+.slide-pages .slide-thumbnail-label > strong {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 500;
+}
+@media (max-width: 800px) {
+  .slide-pages.slide-thumbnails > button {
+    width: 130px;
+  }
+  .slide-pages.slide-thumbnails {
+    padding: 8px;
+    gap: 6px;
+  }
+}

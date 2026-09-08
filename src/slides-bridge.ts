@@ -1,8 +1,10 @@
 // Trusted fixed-page interaction bridge. Imported scripts never run.
 import { gesturePlacement } from "./slide-geometry";
+import { composingKey } from "./editing-keys";
 export function slideBridge(channel: string, pageId: string) {
   return `(() => {
     const gesturePlacement=${gesturePlacement.toString()};
+    const composingKey=${composingKey.toString()};
     const channel=${JSON.stringify(channel)}, pageId=${JSON.stringify(pageId)};
     const send=(type,extra={})=>parent.postMessage({channel,type,...extra},'*');
     const page=[...document.querySelectorAll('[data-doc-slide]')].find(n=>n.getAttribute('data-doc-slide')===pageId);
@@ -89,7 +91,7 @@ export function slideBridge(channel: string, pageId: string) {
     document.addEventListener('pointerdown',e=>begin(e,e.target===handle),true);
     document.addEventListener('pointermove',e=>{
       if(!gesture||e.pointerId!==gesture.pointerId)return;const g=gesture,dx=(e.clientX-g.x)/zoom,dy=(e.clientY-g.y)/zoom;
-      if(Math.abs(dx)+Math.abs(dy)<3&&!g.moved)return;e.preventDefault();g.moved=true;
+      if(Math.hypot(e.clientX-g.x,e.clientY-g.y)<4&&!g.moved)return;e.preventDefault();g.moved=true;
       const p=gesturePlacement({...g.before,width:g.width,height:g.height,originX:g.originX,originY:g.originY},dx,dy,g.resize);
       g.next=p;paint(g.node,p);
     });
@@ -97,6 +99,7 @@ export function slideBridge(channel: string, pageId: string) {
     document.addEventListener('pointerup',e=>{if(e.pointerId===gesture?.pointerId)endGesture(false);});document.addEventListener('pointercancel',e=>{if(e.pointerId===gesture?.pointerId)endGesture(true);});
     document.addEventListener('lostpointercapture',e=>{if(e.pointerId===gesture?.pointerId)endGesture(true);});
     document.addEventListener('keydown',e=>{
+      if(composingKey(e))return;
       if(active){if(e.key==='Escape'){active.textContent=before;active.blur();}if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();active.blur();}return;}
       if(e.key==='Escape'){endGesture(true);select(null);return;}
       if(gesture)return;

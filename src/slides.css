@@ -221,6 +221,13 @@
   gap: 5px;
   margin-top: 10px;
 }
+.object-placement {
+  margin-top: 12px;
+}
+.object-placement summary {
+  cursor: pointer;
+  padding: 6px 0;
+}
 .object-actions {
   display: flex;
   flex-wrap: wrap;

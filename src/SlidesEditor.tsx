@@ -45,6 +45,7 @@ import {
   type Alignment,
 } from "./object-arrange";
 import { isSingleBackground, patchBackgroundImage } from "./background-image";
+import { composingKey } from "./editing-keys";
 export function SlidesEditor({
   record,
   onDirty,
@@ -188,7 +189,10 @@ export function SlidesEditor({
   // A bridge edit mutates the live frame without updating renderSource. Undo may
   // return to that same string, so an explicit repaint revision is necessary.
   const [renderRevision, setRenderRevision] = useState(0);
-  const channel = useMemo(() => crypto.randomUUID(), [renderSource, pageIndex, renderRevision]);
+  const channel = useMemo(
+    () => crypto.randomUUID(),
+    [renderSource, pageIndex, renderRevision],
+  );
   const preview = useMemo(
     () => (page ? createSlidePreview(renderSource, channel, page.id) : ""),
     [renderSource, channel, page?.id],
@@ -306,9 +310,7 @@ export function SlidesEditor({
         }
         if (d.type === "ended") setDirect(false);
         if (d.type === "layout-locked")
-          setError(
-            "这个对象已有复杂变换，首版暂不移动或缩放。仍可修改可识别文字，或回到长文档中批注。",
-          );
+          setError("此对象暂不支持移动，可选择外层容器。");
         if (
           d.type === "placement" &&
           !positionDraft &&
@@ -713,27 +715,42 @@ export function SlidesEditor({
             >
               重做
             </button>
-            <ExportControl name={record.name}
-              url={!textDraft && !styleDraft && !positionDraft && !direct ? download : ""}
+            <ExportControl
+              name={record.name}
+              url={
+                !textDraft && !styleDraft && !positionDraft && !direct
+                  ? download
+                  : ""
+              }
               disabled={!ready || saving || readingImage}
               onDismiss={() => setDownload("")}
               onPrepare={() =>
                 flush(() =>
                   setDownload(
-                    URL.createObjectURL(
-                      htmlExportBlob(sourceRef.current),
-                    ),
+                    URL.createObjectURL(htmlExportBlob(sourceRef.current)),
                   ),
                 )
               }
             />
-            <ResourcePanel source={source} contextKey={record.versions.at(-1)!.id}
-              disabled={!ready || saving || readingImage || direct || textDraft || styleDraft || positionDraft}
+            <ResourcePanel
+              source={source}
+              contextKey={record.versions.at(-1)!.id}
+              disabled={
+                !ready ||
+                saving ||
+                readingImage ||
+                direct ||
+                textDraft ||
+                styleDraft ||
+                positionDraft
+              }
               onApply={(expected, next) => {
-                if (sourceRef.current !== expected || busy.current) throw new Error("文档已变化，请重试。");
+                if (sourceRef.current !== expected || busy.current)
+                  throw new Error("文档已变化，请重试。");
                 commit(next);
                 resetSelection();
-              }} />
+              }}
+            />
             <button
               className="primary"
               disabled={!ready || saving}
@@ -988,135 +1005,202 @@ export function SlidesEditor({
               />
             )}
             {target && (
-              <section>
+              <section
+                onKeyDown={(e) => {
+                  if (
+                    e.key !== "Escape" ||
+                    composingKey(e.nativeEvent) ||
+                    !positionDraft ||
+                    saving
+                  )
+                    return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPosition(appliedPosition.current);
+                  setPositionDraft(false);
+                  setError("");
+                }}
+              >
                 <h2>排列</h2>
                 {!editable && <p>此对象无法移动，可尝试选择外层容器。</p>}
-                <details className="object-alignment">
-                  <summary>对齐到页面</summary>
-                  <div role="group" aria-label="对齐到页面">
-                    {(
-                      [
-                        ["left", "左对齐"],
-                        ["center", "水平居中"],
-                        ["right", "右对齐"],
-                        ["top", "顶对齐"],
-                        ["middle", "垂直居中"],
-                        ["bottom", "底对齐"],
-                      ] as const
-                    ).map(([edge, label]) => (
-                      <button
-                        key={edge}
-                        aria-label={label}
-                        title={label}
-                        disabled={
-                          !editable ||
-                          !selectedGeometry.current ||
-                          !ready ||
-                          saving ||
-                          direct ||
-                          textDraft ||
-                          styleDraft ||
-                          positionDraft
-                        }
-                        onClick={() => alignObject(edge)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-                <div className="position-fields">
-                  {(
-                    [
-                      ["x", "水平偏移"],
-                      ["y", "垂直偏移"],
-                      ["scale", "缩放比例"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <label key={key}>
-                      {label}
-                      <input
-                        aria-label={label}
-                        type="number"
-                        step={key === "scale" ? 0.1 : 1}
-                        disabled={
-                          !editable ||
-                          saving ||
-                          !ready ||
-                          textDraft ||
-                          styleDraft
-                        }
-                        value={position[key]}
-                        onChange={(e) => {
-                          editEpoch.current += 1;
-                          setPositionDraft(true);
-                          setPosition({
-                            ...position,
-                            [key]: Number(e.target.value),
-                          });
-                        }}
-                      />
-                    </label>
-                  ))}
-                </div>
-                <button
-                  className="primary"
-                  disabled={
-                    !editable || saving || !ready || textDraft || styleDraft
-                  }
-                  onClick={() => move(position)}
-                >
-                  应用
-                </button>
-                {positionDraft && (
-                  <button
-                    onClick={() => {
-                      setPosition(appliedPosition.current);
-                      setPositionDraft(false);
-                      setError("");
-                    }}
-                  >
-                    取消
-                  </button>
+                {editable && (
+                  <>
+                    <details className="object-alignment">
+                      <summary>对齐到页面</summary>
+                      <div role="group" aria-label="对齐到页面">
+                        {(
+                          [
+                            ["left", "左对齐"],
+                            ["center", "水平居中"],
+                            ["right", "右对齐"],
+                            ["top", "顶对齐"],
+                            ["middle", "垂直居中"],
+                            ["bottom", "底对齐"],
+                          ] as const
+                        ).map(([edge, label]) => (
+                          <button
+                            key={edge}
+                            aria-label={label}
+                            title={label}
+                            disabled={
+                              !editable ||
+                              !selectedGeometry.current ||
+                              !ready ||
+                              saving ||
+                              direct ||
+                              textDraft ||
+                              styleDraft ||
+                              positionDraft
+                            }
+                            onClick={() => alignObject(edge)}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </details>
+                    <details className="object-placement" key={selected}>
+                      <summary>
+                        位置与缩放{positionDraft ? " · 未应用" : ""}
+                      </summary>
+                      <div className="position-fields">
+                        {(
+                          [
+                            ["x", "水平偏移"],
+                            ["y", "垂直偏移"],
+                            ["scale", "缩放比例"],
+                          ] as const
+                        ).map(([key, label]) => (
+                          <label key={key}>
+                            {label}
+                            <input
+                              aria-label={label}
+                              type="number"
+                              step={key === "scale" ? 0.1 : 1}
+                              disabled={
+                                !editable ||
+                                saving ||
+                                !ready ||
+                                direct ||
+                                textDraft ||
+                                styleDraft
+                              }
+                              value={position[key]}
+                              onChange={(e) => {
+                                editEpoch.current += 1;
+                                setPositionDraft(true);
+                                setPosition({
+                                  ...position,
+                                  [key]: Number(e.target.value),
+                                });
+                              }}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                      {positionDraft && (
+                        <div className="text-run-actions">
+                          <button
+                            className="primary"
+                            disabled={
+                              !editable ||
+                              saving ||
+                              !ready ||
+                              direct ||
+                              textDraft ||
+                              styleDraft
+                            }
+                            onClick={() => move(position)}
+                          >
+                            应用
+                          </button>
+                          {positionDraft && (
+                            <button
+                              title="取消位置修改（Esc）"
+                              onClick={() => {
+                                setPosition(appliedPosition.current);
+                                setPositionDraft(false);
+                                setError("");
+                              }}
+                            >
+                              取消
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div className="nudge-buttons">
+                        <button
+                          aria-label="左移十像素"
+                          disabled={
+                            !editable ||
+                            saving ||
+                            !ready ||
+                            direct ||
+                            positionDraft ||
+                            textDraft ||
+                            styleDraft
+                          }
+                          onClick={() =>
+                            move({ ...position, x: position.x - 10 })
+                          }
+                        >
+                          ←
+                        </button>
+                        <button
+                          aria-label="上移十像素"
+                          disabled={
+                            !editable ||
+                            saving ||
+                            !ready ||
+                            direct ||
+                            positionDraft ||
+                            textDraft ||
+                            styleDraft
+                          }
+                          onClick={() =>
+                            move({ ...position, y: position.y - 10 })
+                          }
+                        >
+                          ↑
+                        </button>
+                        <button
+                          aria-label="下移十像素"
+                          disabled={
+                            !editable ||
+                            saving ||
+                            !ready ||
+                            direct ||
+                            positionDraft ||
+                            textDraft ||
+                            styleDraft
+                          }
+                          onClick={() =>
+                            move({ ...position, y: position.y + 10 })
+                          }
+                        >
+                          ↓
+                        </button>
+                        <button
+                          aria-label="右移十像素"
+                          disabled={
+                            !editable ||
+                            saving ||
+                            !ready ||
+                            direct ||
+                            positionDraft ||
+                            textDraft ||
+                            styleDraft
+                          }
+                          onClick={() =>
+                            move({ ...position, x: position.x + 10 })
+                          }
+                        >
+                          →
+                        </button>
+                      </div>
+                    </details>
+                  </>
                 )}
-                <div className="nudge-buttons">
-                  <button
-                    aria-label="左移十像素"
-                    disabled={
-                      !editable || saving || !ready || textDraft || styleDraft
-                    }
-                    onClick={() => move({ ...position, x: position.x - 10 })}
-                  >
-                    ←
-                  </button>
-                  <button
-                    aria-label="上移十像素"
-                    disabled={
-                      !editable || saving || !ready || textDraft || styleDraft
-                    }
-                    onClick={() => move({ ...position, y: position.y - 10 })}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    aria-label="下移十像素"
-                    disabled={
-                      !editable || saving || !ready || textDraft || styleDraft
-                    }
-                    onClick={() => move({ ...position, y: position.y + 10 })}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    aria-label="右移十像素"
-                    disabled={
-                      !editable || saving || !ready || textDraft || styleDraft
-                    }
-                    onClick={() => move({ ...position, x: position.x + 10 })}
-                  >
-                    →
-                  </button>
-                </div>
               </section>
             )}
             {!target && (

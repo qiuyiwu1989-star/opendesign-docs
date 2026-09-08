@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { composingKey } from "./editing-keys";
 
 export type ObjectStylePatch = {
   fontSize?: number;
@@ -23,13 +24,32 @@ export function ObjectStyleInspector({
     align: "",
   });
   const dirty = Object.values(values).some(Boolean);
+  const cancel = () => {
+    setValues({ size: "", color: "", bold: "", align: "" });
+    onDraft(false);
+  };
   const change = (key: keyof typeof values, value: string) => {
     const next = { ...values, [key]: value };
     setValues(next);
     onDraft(Object.values(next).some(Boolean));
   };
   return (
-    <section className="object-style-inspector" aria-label="对象文字样式">
+    <section
+      className="object-style-inspector"
+      aria-label="对象文字样式"
+      onKeyDown={(e) => {
+        if (
+          e.key !== "Escape" ||
+          composingKey(e.nativeEvent) ||
+          !dirty ||
+          disabled
+        )
+          return;
+        e.preventDefault();
+        e.stopPropagation();
+        cancel();
+      }}
+    >
       <h2 title="统一此对象的文字样式；未填写的项目保留原样">文字样式</h2>
       <div className="object-style-fields">
         <label>
@@ -117,13 +137,7 @@ export function ObjectStyleInspector({
           >
             应用样式
           </button>
-          <button
-            disabled={disabled}
-            onClick={() => {
-              setValues({ size: "", color: "", bold: "", align: "" });
-              onDraft(false);
-            }}
-          >
+          <button disabled={disabled} onClick={cancel} title="取消样式（Esc）">
             取消
           </button>
         </div>

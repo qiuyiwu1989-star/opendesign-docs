@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TextRuns } from "./text-runs";
+import { composingKey } from "./editing-keys";
 
 export function TextRunInspector({
   target,
@@ -14,8 +15,27 @@ export function TextRunInspector({
 }) {
   const [values, setValues] = useState(() => target.runs.map((r) => r.text));
   const dirty = values.some((v, i) => v !== target.runs[i]!.text);
+  const cancel = () => {
+    setValues(target.runs.map((r) => r.text));
+    onDraft(false);
+  };
   return (
-    <section className="text-run-inspector" aria-label="保留格式改字">
+    <section
+      className="text-run-inspector"
+      aria-label="保留格式改字"
+      onKeyDown={(e) => {
+        if (
+          e.key !== "Escape" ||
+          composingKey(e.nativeEvent) ||
+          !dirty ||
+          disabled
+        )
+          return;
+        e.preventDefault();
+        e.stopPropagation();
+        cancel();
+      }}
+    >
       <h2>文字</h2>
       {target.reason ? (
         <p>{target.reason}</p>
@@ -43,27 +63,26 @@ export function TextRunInspector({
               />
             </label>
           ))}
-          <div className="text-run-actions">
-            <button
-              className="primary"
-              disabled={disabled || !dirty}
-              onClick={() => onApply(values)}
-            >
-              应用文字
-            </button>
-            {dirty && (
+          {dirty && (
+            <div className="text-run-actions">
               <button
-                disabled={disabled}
-                onClick={() => {
-                  setValues(target.runs.map((r) => r.text));
-                  onDraft(false);
-                }}
+                className="primary"
+                disabled={disabled || !dirty}
+                onClick={() => onApply(values)}
               >
-                取消改字
+                应用文字
               </button>
-            )}
-          </div>
-          {dirty && <p role="status">文字未应用</p>}
+              {dirty && (
+                <button
+                  disabled={disabled}
+                  onClick={cancel}
+                  title="取消改字（Esc）"
+                >
+                  取消改字
+                </button>
+              )}
+            </div>
+          )}
         </>
       )}
     </section>

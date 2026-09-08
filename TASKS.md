@@ -1,9 +1,10 @@
 # Tasks
 
 ## Now
-- Spec028 compact export and representative file delivery ready for trial at localhost:5179. Save your work before manually refreshing. No public push or deployment.
+- Spec029 editing continuity and compact inspector ready for local trial at localhost:5179. Save your work before manually refreshing. No public push or deployment.
 
 ## Next
+- [ ] Recheck physical drag/resize after spec029 threshold change. This round's browser drag automation produced no confirmed movement; bridge event tests are not native-pointer acceptance. Verify native Chinese IME candidate cancellation as well.
 - [ ] Extend representative pointer/region checks to touch devices, physical mid-gesture cancellation and native fullscreen.
 - [ ] Close v0.1 reliability gaps before adding snapping or multi-selection.
 - [ ] Extend delivery acceptance to additional browsers and font decode verification; representative on-disk PNG/WOFF2 payload delivery and reimport are now checked.
@@ -11,6 +12,7 @@
 - [ ] Define cloud review identity, version anchors and revocable sharing before implementation.
 
 ## Done
+- Spec029: collapse precise placement/nudges, hide unsupported arrangement controls, cancel staged text/style/position with Escape, guard IME shortcuts and direct-text/arrangement conflicts. 239 tests / 32 files and both build budgets pass. Four private HTML samples pass source-span audit; real 10-page VR deck edit/save/refresh/download/reimport retains exact expected HTML. Pointer/device acceptance remains separate. Local only.
 - Spec028: unified no-reflow export popover, bounded filenames and exact-source Blob helper. Fixed dismissed export reopening after transient pending-text selection state. 233 tests, typecheck and both build budgets pass. Real PNG download/reimport/edit/save/refresh/redownload, pending-edit blocking and old-link invalidation verified. Actual WOFF2 payload file/reimport checked; no broad font decode claim. Local preview :5179 restored; no user page auto-refresh.
 - Spec027: resources now open from both toolbars in a bounded, theme-aware popover; removed the long-document mode/count row, preserving review identity in title status. Lazy tools and inputs remain mounted after dismissal. 229 tests, typecheck and both build configurations/budgets pass. Real two-view no-reflow geometry, Escape/focus return, iframe light dismissal, preserved font checkbox and read-only review verified. Existing preview updated without clearing old chunks or refreshing the user's document. Narrow placement has unit coverage, not touch-device acceptance.
 - Spec026 loading slice: slide editing and resource tools load on demand, with concise loading/error/retry states. Resource checks mount on first expansion and stay mounted when collapsed. Static entry closure 439,623 bytes (12.2% below spec025); slide closure 484,024 bytes. Build budgets count transitive imports, not only the entry filename. 228 tests and both builds pass; built-app repair/save/reload/view-switch checks passed. Download acceptance is separately open.

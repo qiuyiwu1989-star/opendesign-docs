@@ -1,4 +1,5 @@
 import { parse, serialize, type DefaultTreeAdapterMap } from "parse5";
+import { composingKey } from "./editing-keys";
 
 type Node = DefaultTreeAdapterMap["node"];
 type Element = DefaultTreeAdapterMap["element"];
@@ -208,6 +209,7 @@ function bridge(
       send('ended');
     });
     document.addEventListener('keydown', e => {
+      if ((${composingKey.toString()})(e)) return;
       if (active && e.key === 'Escape') { active.textContent = before; active.blur(); }
       if (reviewing && e.key === 'Escape') { start = null; clearMarker(); send('annotation-cancel'); }
       if (reviewing && e.key === 'Enter') {

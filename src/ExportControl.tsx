@@ -3,9 +3,10 @@ import { htmlExportName } from "./html-export";
 import { resourcePosition } from "./ResourcePanel";
 import "./export.css";
 
-export function ExportControl({ name, url, disabled, onPrepare, onDismiss }: {
+export function ExportControl({ name, url, disabled, onPrepare, onDismiss, reviewUrl = "", versionLabel = "" }: {
   name: string; url: string; disabled: boolean;
   onPrepare: () => void; onDismiss: () => void;
+  reviewUrl?: string; versionLabel?: string;
 }) {
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -55,8 +56,13 @@ export function ExportControl({ name, url, disabled, onPrepare, onDismiss }: {
       {url && <div className="export-body">
         <p className="export-filename" title={htmlExportName(name)}>{htmlExportName(name)}</p>
         <p>保留原脚本和资源引用，仅打开可信文档。</p>
-        <a className="export-download" href={url} download={htmlExportName(name)}>下载 HTML</a>
-        <small>版本与批注请用“备份与恢复”。</small>
+        {versionLabel && <small>当前审阅：{versionLabel}</small>}
+        <a className="export-download" href={url} download={htmlExportName(name)}>{versionLabel ? "导出内容 · 不含批注" : "下载 HTML"}</a>
+        {reviewUrl && <>
+          <a className="export-download" href={reviewUrl} download={htmlExportName(name).replace(/-edited\.html$/, "-review.html")}>导出审阅副本 · 含批注</a>
+          <small>只读副本 · 不会同步回复 · 外部资源和原脚本不运行</small>
+        </>}
+        <small>全部版本与批注请用“备份与恢复”。</small>
       </div>}
     </div>
   </>;

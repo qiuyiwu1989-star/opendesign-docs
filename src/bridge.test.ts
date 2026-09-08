@@ -77,9 +77,10 @@ describe("spec 013 trusted annotation bridge", () => {
       createElement: () => ({
         style: { cssText: "" },
         setAttribute() {},
+        attachShadow: () => ({ appendChild() {} }),
         remove() {},
       }),
-      documentElement: { append() {} },
+      documentElement: { append() {}, appendChild() {} },
       querySelectorAll: () => [],
     };
     const window = {

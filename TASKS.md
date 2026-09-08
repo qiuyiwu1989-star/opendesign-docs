@@ -1,9 +1,11 @@
 # Tasks
 
 ## Now
+- Spec031 first slice ready locally at http://127.0.0.1:5182/docs/: adapted Bento comment markers, selected-version content/review export and mixed-markup text runs. 244 tests and both builds/budgets pass; real save/reload, marker/reply/resolve and downloaded review viewer checked. Not deployed or pushed. Production remains the alpha below.
 - Current alpha deployed at https://doc.opendesign.cc/ on 2026-09-08, source `9820591` (spec029 + spec030 readiness fix). Native edit/save/reload/download passed. Keep this release stable for user trial; no GitHub push this round. See docs/DEPLOYMENT.md.
 
 ## Next
+- [ ] Continue the approved foundations scope: long-document image/block operations and contextual insertion/style controls, then a bounded Moveable/Selecto trial. Spec031 does not claim these completed. Do not deploy during user trial without explicit authorization.
 - [ ] Recheck physical drag/resize after spec029 threshold change. This round's browser drag automation produced no confirmed movement; bridge event tests are not native-pointer acceptance. Verify native Chinese IME candidate cancellation as well.
 - [ ] Extend representative pointer/region checks to touch devices, physical mid-gesture cancellation and native fullscreen.
 - [ ] Close v0.1 reliability gaps before adding snapping or multi-selection.
@@ -12,6 +14,7 @@
 - [ ] Define cloud review identity, version anchors and revocable sharing before implementation.
 
 ## Done
+- Spec031: real Bento marker rendering adaptation with MIT notice; compact persistent text/region markers, click-through to threads, resolved-state visibility; exact selected-version export and safe standalone read-only review snapshots. Mixed text runs preserve original tags and legacy leaf IDs. Extracted LongEditor to an on-demand module and kept review runtime lazy. See acceptance for exported-file checks and viewport/pointer limits.
 - Spec029: collapse precise placement/nudges, hide unsupported arrangement controls, cancel staged text/style/position with Escape, guard IME shortcuts and direct-text/arrangement conflicts. 239 tests / 32 files and both build budgets pass. Four private HTML samples pass source-span audit; real 10-page VR deck edit/save/refresh/download/reimport retains exact expected HTML. Pointer/device acceptance remains separate. Local only.
 - Spec028: unified no-reflow export popover, bounded filenames and exact-source Blob helper. Fixed dismissed export reopening after transient pending-text selection state. 233 tests, typecheck and both build budgets pass. Real PNG download/reimport/edit/save/refresh/redownload, pending-edit blocking and old-link invalidation verified. Actual WOFF2 payload file/reimport checked; no broad font decode claim. Local preview :5179 restored; no user page auto-refresh.
 - Spec027: resources now open from both toolbars in a bounded, theme-aware popover; removed the long-document mode/count row, preserving review identity in title status. Lazy tools and inputs remain mounted after dismissal. 229 tests, typecheck and both build configurations/budgets pass. Real two-view no-reflow geometry, Escape/focus return, iframe light dismissal, preserved font checkbox and read-only review verified. Existing preview updated without clearing old chunks or refreshing the user's document. Narrow placement has unit coverage, not touch-device acceptance.

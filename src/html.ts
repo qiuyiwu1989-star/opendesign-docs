@@ -1,4 +1,4 @@
-import { parse, serialize, type DefaultTreeAdapterMap } from "parse5";
+import { parse, serialize, defaultTreeAdapter, type DefaultTreeAdapterMap } from "parse5";
 import { composingKey } from "./editing-keys";
 
 type Node = DefaultTreeAdapterMap["node"];
@@ -10,6 +10,7 @@ export type TextTarget = {
   start: number;
   end: number;
   raw: string;
+  part?: boolean;
 };
 export type Inspection = {
   targets: TextTarget[];
@@ -85,11 +86,24 @@ function inspectTree(tree: Node): Inspection {
         });
       }
       blocked ||= excluded.has(node.tagName);
+      // Preserve existing element IDs. Extra IDs address direct text runs, not
+      // a flattened parent containing bold/link/line-break markup.
+      if (!blocked && textTags.has(node.tagName) && node.namespaceURI === "http://www.w3.org/1999/xhtml" &&
+          node.childNodes.some(child => child.nodeName !== "#text")) {
+        node.childNodes.forEach((child, index) => {
+          const loc = child.sourceCodeLocation;
+          if (child.nodeName === "#text" && "value" in child && child.value.trim() && loc) {
+            report.targets.push({ id: `${nodeId}-part-${index}`, tag: node.tagName, text: child.value,
+              start: loc.startOffset, end: loc.endOffset, raw: "", part: true });
+          }
+        });
+      }
     }
     if ("childNodes" in node)
       for (const child of node.childNodes) visit(child, blocked);
   };
   visit(tree, false);
+  report.targets.sort((a, b) => a.start - b.start);
   return report;
 }
 
@@ -132,15 +146,20 @@ function bridge(
   editing: boolean,
   scroll: number,
   reviewing: boolean,
+  markerRuntime: string,
+  reviewReadOnly: boolean,
 ) {
   return `(() => {
     const channel = ${JSON.stringify(channel)};
     const editing = ${JSON.stringify(editing)};
     const reviewing = ${JSON.stringify(reviewing)};
+    const annotating = reviewing && ${!reviewReadOnly};
     const send = (type, extra = {}) => parent.postMessage({channel, type, ...extra}, '*');
     let active = null, before = '';
     const target = e => e.target instanceof Element ? e.target.closest('[data-doc-text]') : null;
     let marker = null, marked = null, start = null;
+    const comments = ${markerRuntime ? `reviewing ? (${markerRuntime})(id => send('review-open', {id})) : null` : "null"};
+    const isComment = e => e.target instanceof Element && e.target.closest('[data-doc-review]');
     const clearMarker = () => { marker?.remove(); marker = null; marked = null; };
     const draw = anchor => {
       clearMarker();
@@ -162,7 +181,7 @@ function bridge(
     window.addEventListener('scroll', () => { if (marked) draw(marked); });
     window.addEventListener('resize', () => { if (marked) draw(marked); });
     document.addEventListener('pointerdown', e => {
-      if (!reviewing || e.button !== 0) return;
+      if (!annotating || e.button !== 0 || isComment(e)) return;
       e.preventDefault();
       start = { x: e.pageX, y: e.pageY, id: target(e)?.getAttribute('data-doc-text') };
     }, true);
@@ -185,6 +204,7 @@ function bridge(
     });
     document.addEventListener('pointercancel', () => { start = null; clearMarker(); });
     document.addEventListener('click', e => {
+      if (isComment(e)) return;
       const anchor = e.target instanceof Element && e.target.closest('a');
       if (anchor) e.preventDefault();
       if (reviewing) { e.preventDefault(); return; }
@@ -209,10 +229,11 @@ function bridge(
       send('ended');
     });
     document.addEventListener('keydown', e => {
+      if (isComment(e)) return;
       if ((${composingKey.toString()})(e)) return;
       if (active && e.key === 'Escape') { active.textContent = before; active.blur(); }
       if (reviewing && e.key === 'Escape') { start = null; clearMarker(); send('annotation-cancel'); }
-      if (reviewing && e.key === 'Enter') {
+      if (annotating && e.key === 'Enter') {
         const node = target(e);
         if (node) {
           e.preventDefault();
@@ -239,6 +260,10 @@ function bridge(
     document.addEventListener('submit', e => e.preventDefault());
     window.addEventListener('message', e => {
       if (e.source !== parent || e.data?.channel !== channel) return;
+      if (e.data.type === 'request-ready') { send('ready'); return; }
+      if (reviewing && e.data.type === 'review-markers' && Array.isArray(e.data.threads)) {
+        clearMarker(); comments?.update(e.data.threads); return;
+      }
       if (e.data.type === 'flush') {
         if (active) active.blur();
         send('flushed'); return;
@@ -265,12 +290,15 @@ export function createPreview(
   scroll = 0,
   reviewing = false,
   decorate?: (node: Element) => void,
+  markerRuntime = "",
+  reviewReadOnly = false,
 ): string {
   if (!/^[a-zA-Z0-9-]{8,100}$/.test(channel))
     throw new Error("Invalid preview channel");
   const tree = parse(source, { sourceCodeLocationInfo: true });
   const targets = inspectTree(tree).targets;
-  const byOffset = new Map(targets.map((target) => [target.start, target.id]));
+  const byOffset = new Map(targets.filter(t => !t.part).map((target) => [target.start, target.id]));
+  const parts = new Map(targets.filter(t => t.part).map(t => [t.start, t.id]));
   const clean = (node: Node) => {
     if (isElement(node)) {
       node.attrs = node.attrs.filter((attr) => {
@@ -317,6 +345,17 @@ export function createPreview(
           !(isElement(child) && removed.has(child.tagName.toLowerCase())),
       );
       node.childNodes.forEach(clean);
+      // Wrapper nodes exist only in the inert preview. Never write them back.
+      node.childNodes = node.childNodes.map(child => {
+        const id = child.nodeName === "#text" ? parts.get(child.sourceCodeLocation?.startOffset ?? -1) : undefined;
+        if (!id || !isElement(node)) return child;
+        const span = defaultTreeAdapter.createElement("span", node.namespaceURI, [
+          { name: "data-doc-text", value: id }, { name: "tabindex", value: "0" },
+        ]);
+        defaultTreeAdapter.appendChild(span, child as DefaultTreeAdapterMap["textNode"]);
+        span.parentNode = node;
+        return span;
+      });
     }
   };
   clean(tree);
@@ -328,6 +367,6 @@ export function createPreview(
     )
     .replace(
       "</body>",
-      `<style>[data-doc-text]:focus{outline:2px solid #267565;outline-offset:4px}${editing ? "[data-doc-text]:hover{outline:1px dashed #267565;outline-offset:3px;cursor:text}[contenteditable]{white-space:pre-wrap}" : ""}${reviewing ? "html,body{cursor:crosshair!important;user-select:none!important}" : ""}</style><script nonce="${channel}">${bridge(channel, editing, scroll, reviewing)}</script></body>`,
+      `<style>[data-doc-text]:focus{outline:2px solid #267565;outline-offset:4px}${editing ? "[data-doc-text]:hover{outline:1px dashed #267565;outline-offset:3px;cursor:text}[contenteditable]{white-space:pre-wrap}" : ""}${reviewing && !reviewReadOnly ? "html,body{cursor:crosshair!important;user-select:none!important}" : ""}</style><script nonce="${channel}">${bridge(channel, editing, scroll, reviewing, markerRuntime, reviewReadOnly)}</script></body>`,
     );
 }

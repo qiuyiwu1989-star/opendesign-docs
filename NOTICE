@@ -9,3 +9,29 @@ project names and logos do not grant trademark rights.
 
 Historical test names refer to upstream specs 013–019. Repository extraction
 is tracked here by spec 020; upstream commit history was not imported.
+
+The numbered review-button rendering in src/bento-review-markers.ts is adapted
+from Bento's slides/src/editor/comments.ts (CommentsUI.refresh), revision
+01000838496ec863ba1035eae12a8a4943020cdc, https://github.com/nyblnet/bento.
+OpenDesign adaptations use immutable-version HTML anchors, isolated shadow DOM,
+viewport mismatch indicators and a source/channel-authenticated iframe bridge.
+Bento's Store, collaboration transport and editor runtime are not imported.
+
+MIT License
+Copyright (c) 2026 The Bento authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

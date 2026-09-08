@@ -4,14 +4,27 @@ import { createPreview, inspectHtml, patchText } from "./html";
 const original =
   "<!doctype html><html><head><style>h1 {color: red}</style></head><body><h1>你好 &amp; 世界</h1><p>包含<strong>重点</strong>的说明</p><svg><text>图形</text></svg><script>window.bad = true</script></body></html>";
 describe("lossless text patches", () => {
-  it("recognizes safe leaf text without flattening mixed markup or SVG", () => {
+  it("recognizes mixed text runs without flattening markup or SVG", () => {
     const report = inspectHtml(original);
     expect(report.targets.map((item) => item.text)).toEqual([
       "你好 & 世界",
+      "包含",
       "重点",
+      "的说明",
     ]);
     expect(report.svg).toBe(1);
     expect(report.scripts).toBe(1);
+  });
+  it("patches text around nested markup, preserving old leaf IDs and exact source", () => {
+    const source = '<p>A &amp; B<strong>bold</strong> after<br>line<a href="#x">link</a>end</p>';
+    const targets = inspectHtml(source).targets;
+    expect(targets.map(t => t.text)).toEqual(['A & B', 'bold', ' after', 'line', 'link', 'end']);
+    expect(targets.find(t => t.text === 'bold')!.id).not.toContain('part');
+    const updated = patchText(source, targets[2]!, ' changed & kept');
+    expect(updated).toBe(source.replace(' after', ' changed &amp; kept'));
+    expect(createPreview(updated, 'test-channel-123', true)).toContain('data-doc-text="' + targets[2]!.id + '"');
+    expect(updated).not.toContain('data-doc-');
+    expect(inspectHtml('<p> <strong>bold</strong>\n </p>').targets).toHaveLength(1);
   });
   it("changes only the exact source span and escapes HTML", () => {
     const target = inspectHtml(original).targets[0]!;

@@ -18,15 +18,17 @@ import { reviewView, type ReviewFilter } from "./review-view";
 
 export type ReviewPanelHandle = {
   selectAnchor: (anchor: ReviewAnchor) => void;
+  openThread: (id: string) => void;
 };
 type Props = {
   record: DocumentRecord;
   versionId: string;
   onDirty: (dirty: boolean) => void;
   onLocate: (anchor: ReviewAnchor) => void;
+  onReviewChange?: (review: ReviewRecord | null) => void;
 };
 export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
-  function ReviewPanel({ record, versionId, onDirty, onLocate }, ref) {
+  function ReviewPanel({ record, versionId, onDirty, onLocate, onReviewChange }, ref) {
     const [review, setReview] = useState<ReviewRecord>({
       id: record.id,
       revision: 0,
@@ -42,6 +44,14 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
     const [replyId, setReplyId] = useState("");
     const [reply, setReply] = useState("");
     const [filter, setFilter] = useState<ReviewFilter>("pending");
+    const [activeThread, setActiveThread] = useState("");
+    const threadNodes = useRef(new Map<string, HTMLElement>());
+    useEffect(() => { onReviewChange?.(ready && !loading ? review : null); }, [review, ready, loading, onReviewChange]);
+    useEffect(() => {
+      const node = threadNodes.current.get(activeThread);
+      node?.scrollIntoView({ block: "nearest" });
+      node?.focus({ preventScroll: true });
+    }, [activeThread, filter]);
     const pending = Boolean(body.trim() || reply.trim() || busy);
     const busyRef = useRef(false);
     const loadingRef = useRef(true);
@@ -96,6 +106,14 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
       };
     }, [record.id]);
     useImperativeHandle(ref, () => ({
+      openThread(id) {
+        const thread = review.threads.find(t => t.id === id && t.versionId === versionId);
+        if (!thread || busyRef.current) return;
+        setFilter(thread.resolved ? "resolved" : "pending");
+        setActiveThread(id);
+        // Selecting the same marker should still restore focus.
+        threadNodes.current.get(id)?.focus();
+      },
       selectAnchor(next) {
         if (busyRef.current) return;
         if (
@@ -127,6 +145,7 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
       setReply("");
       setReplyId("");
       setFilter("pending");
+      setActiveThread("");
       focusRequested.current = false;
     }, [record.id, versionId]);
     const persist = async (next: ReviewRecord, success?: () => void) => {
@@ -227,6 +246,7 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
                   () => {
                     setBody("");
                     setAnchor(null);
+                    setFilter("pending");
                   },
                 )
               }
@@ -255,8 +275,10 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
         {view.visible
           .map((thread) => (
             <article
-              className={`review-thread ${thread.resolved ? "resolved" : ""}`}
+              className={`review-thread ${thread.resolved ? "resolved" : ""} ${activeThread === thread.id ? "active" : ""}`}
               key={thread.id}
+              tabIndex={-1}
+              ref={node => { if (node) threadNodes.current.set(thread.id, node); else threadNodes.current.delete(thread.id); }}
             >
               <button
                 className="anchor-link"

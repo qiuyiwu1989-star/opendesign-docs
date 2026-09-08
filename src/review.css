@@ -58,6 +58,7 @@
 .review-thread.resolved {
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
+.review-thread.active, .review-thread:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .review-thread .anchor-link {
   white-space: normal;
   text-align: left;

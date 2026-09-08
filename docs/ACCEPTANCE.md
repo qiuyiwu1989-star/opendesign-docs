@@ -1,5 +1,16 @@
 # Acceptance record
 
+## Spec028: compact export and actual file delivery (2026-09-08)
+
+- 233 tests / 31 files plus typecheck pass. Both build bases/budgets pass. `/docs/` initial JS 442,400 bytes (gzip 139,340); slides static closure 486,573 bytes. Tests cover exact Unicode/CRLF/script/style/embedded-resource Blob preservation, bounded safe filenames and concise, non-success-claiming export markup.
+- Real browser 1280 x 720: slide canvas y=190.875, height=497.25 unchanged before/after export popup; long-document iframe y=108, height=596 unchanged. Escape returns focus to export. Fixed and verified that selecting a different text target does not reopen a dismissed link after transient pending-text state.
+- Sidebar staged text blocks export with a clear apply-first error. Applying a new title removes the old download anchor; saving version 2 and refreshing retains the new title. Fresh download contains that title. Tests used newly imported synthetic copies, not the user's native working document.
+- Actual Downloads artifacts from direct UI clicks: `picture-check-edited.html`, 13,296 bytes, mtime 2026-09-08 10:44:32 local, SHA256 `f21e1eb4f7fcf5e8cb5be4cd7cb8927cd7507194f3c39eb96d75d0d24b307b8a`; PNG is embedded 256 x 256, SOURCE candidates absent, no editor bridge/contenteditable markers. File chooser reimport succeeded; rendered IMG complete=true/naturalWidth=256. Original imported fixture remains a separate record.
+- After reimport and editing: `picture-check-edited-edited.html`, 13,306 bytes, mtime 10:54:20, SHA256 `d0eea3614c805e3c7c15d5a0da78d8483b09cd50715f315c9c0fa0f956d4b0e8`; new title and 256 x 256 PNG retained, no editor markers. Saved version survived app refresh. These are real downloaded files, not shell-generated substitutes.
+- `font-check-edited.html`, 25,129 bytes, mtime 10:56:34, contains 18,096-byte `wOF2` payload. File chooser reimport succeeded with embedded font-face CSS and Demo Serif styling retained. Read-only browser font-set inspection returned no entries, so fresh browser decode status is inconclusive; this is payload delivery/reimport evidence, not a font-rendering compatibility certification. No font files or generated private artifacts added to Git.
+- Browser download event timed out despite the first actual file; downloadMedia alone did not produce the second file, while clicking the visible download anchor did. Do not use either automation signal as proof of saved-file success. The UI deliberately makes no such claim.
+- Prior local listeners :5179/:5180/:5181 were absent. Restored dev QA :5180 and current user-referenced built preview :5179; retained old build chunks and did not reload/close any user tab. No production deployment, public push, new cloud permission, or storage migration.
+
 ## Spec027: compact resource tools (2026-09-07)
 
 - 229 tests / 30 files, typecheck, domain-root and `/docs/` builds plus bundle gates pass. `/docs/` initial/static JS 440,611 bytes; slides without tools 485,012 bytes. Root build validated in an isolated temporary output; budget script now accepts an optional directory.

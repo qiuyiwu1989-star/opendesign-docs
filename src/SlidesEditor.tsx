@@ -11,6 +11,8 @@ import {
 import { saveDocument, type DocumentRecord } from "./store";
 import "./slides.css";
 import { ResourcePanel } from "./ResourcePanel";
+import { ExportControl } from "./ExportControl";
+import { htmlExportBlob } from "./html-export";
 import { inspectTextRuns, patchTextRuns } from "./text-runs";
 import { TextRunInspector } from "./TextRunInspector";
 import type { DraftControls } from "./DraftWorkspace";
@@ -711,22 +713,20 @@ export function SlidesEditor({
             >
               重做
             </button>
-            <button
-              disabled={!ready || saving}
-              onClick={() =>
+            <ExportControl name={record.name}
+              url={!textDraft && !styleDraft && !positionDraft && !direct ? download : ""}
+              disabled={!ready || saving || readingImage}
+              onDismiss={() => setDownload("")}
+              onPrepare={() =>
                 flush(() =>
                   setDownload(
                     URL.createObjectURL(
-                      new Blob([sourceRef.current], {
-                        type: "text/html;charset=utf-8",
-                      }),
+                      htmlExportBlob(sourceRef.current),
                     ),
                   ),
                 )
               }
-            >
-              导出
-            </button>
+            />
             <ResourcePanel source={source} contextKey={record.versions.at(-1)!.id}
               disabled={!ready || saving || readingImage || direct || textDraft || styleDraft || positionDraft}
               onApply={(expected, next) => {
@@ -795,17 +795,6 @@ export function SlidesEditor({
           <div role="alert" className="error">
             {error}
             <button onClick={() => setError("")}>关闭</button>
-          </div>
-        )}
-        {download && !textDraft && !styleDraft && !positionDraft && !direct && (
-          <div className="export-banner">
-            导出保留原脚本和资源引用，请只打开可信文档。
-            <a
-              href={download}
-              download={record.name.replace(/\.html?$/i, "") + "-edited.html"}
-            >
-              下载文件
-            </a>
           </div>
         )}
         <div className="slide-workspace">

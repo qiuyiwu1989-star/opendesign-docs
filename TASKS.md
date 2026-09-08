@@ -1,16 +1,17 @@
 # Tasks
 
 ## Now
-- Spec027 compact resource tools ready for trial at localhost:5181. Save your work before manually refreshing. Actual repaired-HTML download/reimport acceptance remains open; no public push or deployment.
+- Spec028 compact export and representative file delivery ready for trial at localhost:5179. Save your work before manually refreshing. No public push or deployment.
 
 ## Next
 - [ ] Extend representative pointer/region checks to touch devices, physical mid-gesture cancellation and native fullscreen.
 - [ ] Close v0.1 reliability gaps before adding snapping or multi-selection.
-- [ ] Resume actual repaired-HTML download/reimport acceptance when a downloaded file is available or the native browser is free for testing; do not treat prepared Blob links as delivered files.
+- [ ] Extend delivery acceptance to additional browsers and font decode verification; representative on-disk PNG/WOFF2 payload delivery and reimport are now checked.
 - [ ] Complex backgrounds and broader WOFF1, variable/CJK font and nested-CSS compatibility need representative acceptance before expansion. Static picture unification is now covered; preserving multiple responsive candidates is not.
 - [ ] Define cloud review identity, version anchors and revocable sharing before implementation.
 
 ## Done
+- Spec028: unified no-reflow export popover, bounded filenames and exact-source Blob helper. Fixed dismissed export reopening after transient pending-text selection state. 233 tests, typecheck and both build budgets pass. Real PNG download/reimport/edit/save/refresh/redownload, pending-edit blocking and old-link invalidation verified. Actual WOFF2 payload file/reimport checked; no broad font decode claim. Local preview :5179 restored; no user page auto-refresh.
 - Spec027: resources now open from both toolbars in a bounded, theme-aware popover; removed the long-document mode/count row, preserving review identity in title status. Lazy tools and inputs remain mounted after dismissal. 229 tests, typecheck and both build configurations/budgets pass. Real two-view no-reflow geometry, Escape/focus return, iframe light dismissal, preserved font checkbox and read-only review verified. Existing preview updated without clearing old chunks or refreshing the user's document. Narrow placement has unit coverage, not touch-device acceptance.
 - Spec026 loading slice: slide editing and resource tools load on demand, with concise loading/error/retry states. Resource checks mount on first expansion and stay mounted when collapsed. Static entry closure 439,623 bytes (12.2% below spec025); slide closure 484,024 bytes. Build budgets count transitive imports, not only the entry filename. 228 tests and both builds pass; built-app repair/save/reload/view-switch checks passed. Download acceptance is separately open.
 - Spec025: one compact grouped picture diagnostic, explicit unification/cancel, source-span replacement with candidate removal, layout attributes preserved, conservative malformed/scripted rejection, async version/context guard and keyboard focus return. Real replacement in both views, undo/redo, save/refresh and read-only original review verified. 224 tests / 29 files and both builds pass. Local only.
@@ -23,7 +24,7 @@
 
 ## Blocked / limits
 - Resource inspection is static and partial, not a decode/network success report. Font import covers explicit top-level inline declarations; picture repair covers conservative static unification only. Complex CSS, scripted pictures and responsive art-direction preservation remain excluded. Delayed-result guards have unit coverage; no forced browser race or WOFF1 real-file acceptance yet.
-- Spec026: in-app HTML download click/media-download action did not yield a confirmed file in Downloads. Native file chooser could not be driven in this pass; the native window then changed to the user's course document, so interaction stopped. No repaired-HTML on-disk or reimport claim. Prior native JSON backup acceptance remains valid, not a substitute for this HTML gate.
-- Deferred loading failure callback has automated coverage; a real failed-network chunk/retry was not fault-injected. Bundle reduction is not a page-speed percentage. Preview at localhost:5181 is a local build, not deployment; leave it running while the user has a document there.
+- Spec026 historical download blocker superseded by spec028: direct UI clicks now produced confirmed files and file-chooser reimport worked. The automation download-event wait still timed out, and downloadMedia alone produced no second file; neither API result is a delivery signal. Fresh font decode status is still inconclusive despite intact WOFF2 data.
+- Deferred loading failure callback has automated coverage; a real failed-network chunk/retry was not fault-injected. Bundle reduction is not a page-speed percentage. Old :5179/:5180/:5181 listeners were stopped on 2026-09-08; restored built preview :5179 and development QA :5180. Browser documents are origin-specific; do not clear or silently migrate them. Local preview is not deployment.
 - Region annotations retain their original version/viewport; changed layout width may prevent precise positioning and produces a warning.
 - No cloud sharing, voice annotation or production deployment in this snapshot.

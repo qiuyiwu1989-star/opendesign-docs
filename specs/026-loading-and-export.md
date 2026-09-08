@@ -15,10 +15,10 @@ No dependency upgrade, server/CDN changes, schema migration, deployment, push, c
 ## Acceptance
 - [x] On-demand initialization, loading state, error/retry callback and static closure budget tests/checks. No browser network-failure injection.
 - [x] Both build bases build and pass budgets; `/docs/` built-app source persistence/editing and view switching checked in browser.
-- [ ] Real HTML download, on-disk inspection and reimport of repaired synthetic source; record browser-specific limitations.
+- [x] Real HTML download, on-disk inspection and reimport of repaired synthetic source; completed in spec028 on 2026-09-08. Download event observation is unreliable; actual files were verified independently. Font payload preservation is verified, not broad font rendering compatibility.
 - [x] 228 tests and both builds pass; loading slice documented for local commit.
 
 ## Status
-Loading slice complete locally. Actual repaired-HTML download/reimport blocked in this pass: no confirmed in-app file and native-browser QA stopped when the user's real document appeared. See docs/ACCEPTANCE.md. No push/deployment.
+Loading slice complete locally. Initial download acceptance was blocked; spec028 subsequently closed representative on-disk image/font payload delivery and reimport. See docs/ACCEPTANCE.md for the historical limitation and new evidence. No push/deployment.
 
 Reference: [React lazy](https://react.dev/reference/react/lazy).

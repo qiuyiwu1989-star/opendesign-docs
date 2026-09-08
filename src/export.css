@@ -1,24 +1,9 @@
-.export-banner {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.export-banner span {
-  flex: 1;
-}
-.export-banner a {
-  color: var(--accent);
-  font-weight: 600;
-  white-space: nowrap;
-}
-.export-banner button {
-  padding: 5px 9px;
-}
+.export-body { padding: 0 12px 14px; line-height: 1.6; }
+.export-body p { margin: 8px 0; color: var(--muted); font-size: 12px; }
+.export-body .export-filename { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.export-download { display: inline-block; padding: 7px 12px; border-radius: 7px; color: var(--surface); background: var(--accent); font-weight: 600; text-decoration: none; }
+.export-download:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.export-body small { display: block; color: var(--muted); margin-top: 10px; font-size: 11px; }
 .library,
 .editor-body {
   min-width: 0;
@@ -26,12 +11,6 @@
 @media (max-width: 800px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .export-banner {
-    flex-wrap: wrap;
-  }
-  .export-banner span {
-    flex-basis: 100%;
   }
   .page-container {
     width: 100%;

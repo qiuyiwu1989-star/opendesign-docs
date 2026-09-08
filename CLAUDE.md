@@ -15,6 +15,8 @@ Standalone React, TypeScript, Vite, parse5, Vitest. Browser IndexedDB `opendesig
 - Explicit approval required for deployment, production changes and destructive operations.
 
 ## Current state
+Spec028: shared toolbar export popover replaces both full-width banners. Flush edits before exact-source Blob creation; preserve pending-edit guards, invalidate/revoke old URLs, and never report download success from a click alone. Same-URL availability changes must not reopen dismissed tools. 233 tests and both build budgets pass. Actual repaired PNG download/reimport/edit/save/refresh/redownload verified; WOFF2 payload download/reimport verified, fresh decode status inconclusive. Local preview :5179 restored after prior servers stopped, without refreshing any user page; :5180 is development QA. No push/deployment.
+
 Spec027: resource repair is a toolbar popover in both views, not a full-width row. Long-document mode/count guidance no longer reserves canvas height; review version/local-only identity remains in title status. Preserve native auto-popover dismissal, lazy mounted tools and source/version guards. Modern Popover API browsers required; narrow geometry unit-tested, touch/browser matrix still open. 229 tests, typecheck and both build budgets pass. localhost:5181 updated with old hashed assets retained; never automatically reload the user's active page. Local only.
 
 Independent extraction from upstream 576ccbe; spec020. MIT source attribution preserved. First public snapshot is alpha, not a production deployment. See TASKS.md and docs/ACCEPTANCE.md for verification status.

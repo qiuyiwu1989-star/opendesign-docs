@@ -20,6 +20,8 @@ import { validateAnchor, type ReviewAnchor } from "./review";
 import { ReviewPanel, type ReviewPanelHandle } from "./ReviewPanel";
 import { BackupMenu } from "./BackupMenu";
 import { ResourcePanel } from "./ResourcePanel";
+import { ExportControl } from "./ExportControl";
+import { htmlExportBlob } from "./html-export";
 import { rememberSelection, restoredSelection } from "./workspace-selection";
 import "./style.css";
 import "./export.css";
@@ -665,8 +667,9 @@ function Editor({
       setError("右侧文字尚未应用。请先点击“应用修改”，再导出。");
       return;
     }
+    setError("");
     const url = URL.createObjectURL(
-      new Blob([sourceRef.current], { type: "text/html;charset=utf-8" }),
+      htmlExportBlob(sourceRef.current),
     );
     setDownloadUrl(url);
   };
@@ -739,12 +742,9 @@ function Editor({
               setRenderSource(next);
               setSelected("");
             }} />
-          <button
-            disabled={saving || !ready || reviewing}
-            onClick={() => flush(download)}
-          >
-            导出 HTML
-          </button>
+          <ExportControl name={record.name} url={!pendingText && !directEditing ? downloadUrl : ""}
+            disabled={saving || !ready || reviewing} onPrepare={() => flush(download)}
+            onDismiss={() => setDownloadUrl("")} />
           <button
             className="primary"
             disabled={saving || !ready || reviewing}
@@ -758,20 +758,6 @@ function Editor({
         <div role="alert" className="error">
           {error}
           <button onClick={() => setError("")}>关闭</button>
-        </div>
-      )}
-      {downloadUrl && !pendingText && !directEditing && (
-        <div className="export-banner" role="region" aria-label="导出已准备好">
-          <span>
-            HTML 已准备好，保留原脚本与资源引用。请只打开你信任的文档。
-          </span>
-          <a
-            href={downloadUrl}
-            download={record.name.replace(/\.html?$/i, "") + "-edited.html"}
-          >
-            下载文件
-          </a>
-          <button onClick={() => setDownloadUrl("")}>关闭</button>
         </div>
       )}
       <div className="editor-body">

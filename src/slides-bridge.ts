@@ -124,7 +124,7 @@ export function slideBridge(channel: string, pageId: string) {
       else if(gesture?.node===node)endGesture(true);
       paint(node,p);if(ack<0||selected===node)select(node);
     });
-    window.addEventListener('message',e=>{if(e.source!==parent||e.data?.channel!==channel)return;if(e.data.type==='flush'){finishText();endGesture(false);send('flushed');}if(e.data.type==='select-object')select([...page.querySelectorAll('[data-doc-object]')].find(n=>n.getAttribute('data-doc-object')===e.data.id)||null);});
+    window.addEventListener('message',e=>{if(e.source!==parent||e.data?.channel!==channel)return;if(e.data.type==='request-ready')send('slide-ready',{width:w,height:h});if(e.data.type==='flush'){finishText();endGesture(false);send('flushed');}if(e.data.type==='select-object')select([...page.querySelectorAll('[data-doc-object]')].find(n=>n.getAttribute('data-doc-object')===e.data.id)||null);});
     window.addEventListener('blur',()=>endGesture(true));
     window.addEventListener('resize',fit);fit();send('slide-ready',{width:w,height:h});
   })();`;

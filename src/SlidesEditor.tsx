@@ -352,6 +352,9 @@ export function SlidesEditor({
       }
     };
     window.addEventListener("message", receive);
+    // The child's initial message may precede this passive effect. If the
+    // frame has not loaded yet, onLoad below completes the same handshake.
+    if (!ready) frame.current?.contentWindow?.postMessage({ channel, type: "request-ready" }, "*");
     return () => window.removeEventListener("message", receive);
   });
   const flush = (action: () => void) => {
@@ -839,6 +842,7 @@ export function SlidesEditor({
               }
               ref={frame}
               title="HTML 演示画布"
+              onLoad={() => frame.current?.contentWindow?.postMessage({ channel, type: "request-ready" }, "*")}
               srcDoc={preview}
               sandbox="allow-scripts"
               referrerPolicy="no-referrer"

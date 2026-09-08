@@ -170,6 +170,17 @@ function harness(activate = false) {
 }
 
 describe("spec 014 trusted slide gesture bridge", () => {
+  it("spec030 repeats ready on an authenticated parent request without changing content", () => {
+    const h = harness();
+    h.messages.length = 0;
+    h.windowEvents.message!({ source: {}, data: { channel: "test-channel-123", type: "request-ready" } });
+    h.windowEvents.message!({ source: h.parent, data: { channel: "wrong", type: "request-ready" } });
+    expect(h.messages).toHaveLength(0);
+    h.windowEvents.message!({ source: h.parent, data: { channel: "test-channel-123", type: "request-ready" } });
+    expect(h.messages).toEqual([{ channel: "test-channel-123", type: "slide-ready", width: 1280, height: 720 }]);
+    expect(h.object.textContent).toBe("原始文字");
+    expect(h.object.style.translate).toBeUndefined();
+  });
   it("spec029 ignores viewport jitter before converting movement at half zoom", () => {
     const h = harness();
     h.pointer("pointerdown", 100, 100);

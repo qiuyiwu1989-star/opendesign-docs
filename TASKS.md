@@ -1,7 +1,7 @@
 # Tasks
 
 ## Now
-- Spec029 editing continuity and compact inspector ready for local trial at localhost:5179. Save your work before manually refreshing. No public push or deployment.
+- Current alpha deployed at https://doc.opendesign.cc/ on 2026-09-08, source `9820591` (spec029 + spec030 readiness fix). Native edit/save/reload/download passed. Keep this release stable for user trial; no GitHub push this round. See docs/DEPLOYMENT.md.
 
 ## Next
 - [ ] Recheck physical drag/resize after spec029 threshold change. This round's browser drag automation produced no confirmed movement; bridge event tests are not native-pointer acceptance. Verify native Chinese IME candidate cancellation as well.
@@ -29,4 +29,4 @@
 - Spec026 historical download blocker superseded by spec028: direct UI clicks now produced confirmed files and file-chooser reimport worked. The automation download-event wait still timed out, and downloadMedia alone produced no second file; neither API result is a delivery signal. Fresh font decode status is still inconclusive despite intact WOFF2 data.
 - Deferred loading failure callback has automated coverage; a real failed-network chunk/retry was not fault-injected. Bundle reduction is not a page-speed percentage. Old :5179/:5180/:5181 listeners were stopped on 2026-09-08; restored built preview :5179 and development QA :5180. Browser documents are origin-specific; do not clear or silently migrate them. Local preview is not deployment.
 - Region annotations retain their original version/viewport; changed layout width may prevent precise positioning and produces a warning.
-- No cloud sharing, voice annotation or production deployment in this snapshot.
+- No cloud sharing or voice annotation. Production serves the local-first editor; documents remain in browser storage, not on the server.

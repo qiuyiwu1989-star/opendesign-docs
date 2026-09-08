@@ -1,5 +1,14 @@
 # Acceptance record
 
+## Spec030: production alpha deployment (2026-09-08)
+
+- Source `9820591`, activated at 05:44:52 UTC on https://doc.opendesign.cc/. The preceding `96715f3` activation exposed a readiness race in native production QA: selection worked but save/export/play remained disabled. Added authenticated request-ready after parent listener registration and iframe load. The fixed release shows dimensions and enabled controls after reload.
+- 240 tests / 32 files, typecheck and production-root build pass. Entry JS closure 442,662 bytes; slides 487,585 bytes, within unchanged budgets. Compatibility rollback based on `f98750c` plus the same readiness fix passes 233 tests, typecheck and root build. Rollback is prepared, not production-browser exercised.
+- Native Doubao browser, new production QA tab and new public example only: changed paragraph to `Production release check 2026-09-08`, applied text, clicked Save version, reloaded, confirmed the exact text and ready controls. Clicked Export then Download HTML. Actual Downloads artifact `演示页体验-edited (3).html` is 1,464 bytes, mtime 05:46:58.671 UTC, contains the marker and both slide pages, and no readiness bridge. Older downloads and existing user documents were not overwritten. Pending text correctly blocked premature save before Apply.
+- All six production entry/assets match local bytes; root and healthz 200, deliberately missing asset 404, Library and Studio 200. Access-log sample after fixed activation: 12 requests, zero 5xx. This is a bounded observation, not ongoing monitoring.
+- User switched the native browser to unrelated work after download, so further native interaction stopped. Full presentation navigation, physical drag/resize, IME, touch and cross-browser gates are not closed by this deployment. Existing localhost user tab was not refreshed or closed. Browser storage was not cleared; the synthetic QA record and downloaded file remain.
+- No GitHub push, server database change, nginx restart or security-policy relaxation. Existing browser storage may upgrade to the current IndexedDB schema; rollback must use the prepared compatible build, not the initial v1 application. See DEPLOYMENT.md.
+
 ## Spec029: editing continuity and compact inspector (2026-09-08)
 
 - 239 tests / 32 files and typecheck pass. Both base-path builds and budgets pass: `/docs/` initial/static JS 442,595 bytes; slides static closure 487,348 bytes, below the existing 450,000/490,000 gates. No budget increases or new runtime dependencies.

@@ -1,11 +1,12 @@
 import { parse, type DefaultTreeAdapterMap } from "parse5";
-import { inspectSlides, type SlideObject } from "./slides";
+import { inspectSlides, type SlideObject, type SlidePage } from "./slides";
 import { MAX_DOCUMENT_BYTES } from "./slide-insert";
 import { validateLocalImage, type LocalImage } from "./image-import";
 
 type Node = DefaultTreeAdapterMap["node"];
 type Element = DefaultTreeAdapterMap["element"];
 type Edit = { start: number; end: number; value: string };
+export type ObjectCatalog = (source: string) => SlidePage[];
 export type ObjectTextStyle = {
   fontSize?: number;
   color?: string;
@@ -57,8 +58,8 @@ function appendableStyle(value: string) {
   return !quote && !depth;
 }
 
-function locate(source: string, target: SlideObject) {
-  const pages = inspectSlides(source);
+function locate(source: string, target: SlideObject, catalog: ObjectCatalog = inspectSlides) {
+  const pages = catalog(source);
   const page = pages.find((p) => p.objects.some((o) => o.id === target.id));
   const current = page?.objects.find((o) => o.id === target.id);
   if (
@@ -155,17 +156,18 @@ function locate(source: string, target: SlideObject) {
       isElement(node.parentNode) &&
       node.parentNode.tagName === "picture"
     );
-  return { node, nodes, page: page!, independent, textStyle, replaceImage };
+  return { node, nodes, page: page!, independent, basic, textStyle, replaceImage };
 }
 
-export function getObjectCapabilities(source: string, target: SlideObject) {
+export function getObjectCapabilities(source: string, target: SlideObject, catalog?: ObjectCatalog) {
   try {
-    const c = locate(source, target);
+    const c = locate(source, target, catalog);
     return {
       duplicate: c.independent && c.page.objects.length + c.nodes.length <= 400,
       remove: c.independent,
       textStyle: c.textStyle,
       replaceImage: c.replaceImage,
+      reorder: c.basic,
       ...(!c.independent ? { reason: "复杂结构或引用仅支持局部修改。" } : {}),
     };
   } catch (e) {
@@ -174,6 +176,7 @@ export function getObjectCapabilities(source: string, target: SlideObject) {
       remove: false,
       textStyle: false,
       replaceImage: false,
+      reorder: false,
       reason: e instanceof Error ? e.message : "请重新选择对象。",
     };
   }
@@ -212,8 +215,8 @@ function attribute(
 }
 
 /** Exact sibling copy. Keep its layout rather than guessing a CSS containing block. */
-export function duplicateObject(source: string, target: SlideObject) {
-  const c = locate(source, target);
+export function duplicateObject(source: string, target: SlideObject, catalog: ObjectCatalog = inspectSlides) {
+  const c = locate(source, target, catalog);
   if (!c.independent || c.page.objects.length + c.nodes.length > 400)
     throw unsupported();
   const loc = c.node.sourceCodeLocation!;
@@ -221,15 +224,15 @@ export function duplicateObject(source: string, target: SlideObject) {
   const next = apply(source, [
     { start: loc.endOffset, end: loc.endOffset, value: fragment },
   ]);
-  const added = inspectSlides(next)
+  const added = catalog(next)
     .find((p) => p.id === c.page.id)
     ?.objects.find((o) => o.start === loc.endOffset);
   if (!added || added.tag !== target.tag) throw unsupported();
   return { source: next, objectId: added.id };
 }
 
-export function removeObject(source: string, target: SlideObject) {
-  const c = locate(source, target);
+export function removeObject(source: string, target: SlideObject, catalog?: ObjectCatalog) {
+  const c = locate(source, target, catalog);
   if (!c.independent) throw unsupported();
   const loc = c.node.sourceCodeLocation!;
   return apply(source, [
@@ -275,6 +278,7 @@ export function patchObjectTextStyle(
   source: string,
   target: SlideObject,
   patch: ObjectTextStyle,
+  catalog?: ObjectCatalog,
 ) {
   const values: Record<string, string> = {};
   if (
@@ -307,7 +311,7 @@ export function patchObjectTextStyle(
       throw new Error("对齐方式无效。");
     values["text-align"] = patch.align;
   }
-  const c = locate(source, target);
+  const c = locate(source, target, catalog);
   if (!c.textStyle) throw unsupported();
   if (!Object.keys(values).length) return source;
   return apply(
@@ -333,9 +337,10 @@ export function replaceObjectImage(
   target: SlideObject,
   image: LocalImage,
   renderedSize?: { width: number; height: number },
+  catalog?: ObjectCatalog,
 ) {
   validateLocalImage(image);
-  const c = locate(source, target);
+  const c = locate(source, target, catalog);
   if (!c.replaceImage) throw unsupported();
   const edits = [attribute(source, c.node, "src", image.dataUrl)];
   const style = c.node.attrs.find((a) => a.name === "style")?.value ?? "";

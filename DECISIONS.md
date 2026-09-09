@@ -1,5 +1,13 @@
 # Decisions
 
+- 2026-09-09: The long-document inspector reports only supported literal inline style values from the selected source object. Unknown cascade, CSS variables, relative units, semantic defaults and mixed text runs are never presented as a concrete default; choosing a control explicitly normalizes that property. This keeps the compact Keynote-like panel honest without introducing computed-style or DOM serialization drift. Confidence: high.
+
+- 2026-09-09: Guarded long-document deletion is immediate and reversible, not modal. Existing undo/redo and immutable saved versions provide recovery; a blocking confirmation interrupted real editing and browser QA. Exact downloaded source is the destructive-action delivery gate, while chooser-driven reimport remains separately reported. Confidence: high.
+
+- 2026-09-09: Spec032 keeps long-document structure in normal document flow. Blocks can move among safe siblings and preserve their complete source; the editor does not turn articles into an absolute Keynote canvas. Reason: HTML documents need readable reflow while presentation pages retain free placement. Long-document tools stay lazy so reading remains content-first. Confidence: high.
+
+- 2026-09-09: Moveable 0.53.0 and Selecto 1.26.3 remain development-only in a bounded sandbox experiment. Click selection and source writeback work, but scaled/rotated request distance diverged from the requested distance and native pointer drag is unproven. Do not replace the production gesture engine until coordinate, zoom and native pointer gates pass. Confidence: high.
+
 - 2026-09-08: Spec029 continues the accepted first-phase reliability plan, not a new feature expansion. Keep precise placement and nudge controls collapsed; preserve drafts inside the disclosure and show a pending marker. Hide unavailable placement controls rather than filling the inspector with disabled inputs. Escape cancels only the focused inspector's unapplied change, and composition keys must not trigger editor actions. Four-pixel gesture threshold uses iframe viewport coordinates before internal zoom conversion. No deployment or public push authorized by this continuation.
 
 - 2026-09-08: Spec028 continues existing export acceptance and the user's compact-interface constraint: shared toolbar popover rather than full-width status banners or a new file-system permission flow. Preserve exact original source and separate download from version/backup semantics. Do not auto-reopen on the same prepared URL after temporary edit-state changes. On-disk inspection, not automation download events, is the delivery gate. Restore the currently referenced :5179 preview after confirming it had no listener; do not refresh the user's old page.

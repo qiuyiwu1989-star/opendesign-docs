@@ -1,0 +1,8 @@
+.document-object-tools { min-width: 0; padding-block: 14px; border-bottom: 1px solid var(--line); }
+.document-object-tools > label { display: grid; gap: 8px; font-size: 13px; }
+.document-object-tools select { max-width: 100%; min-width: 0; padding: 8px; color: inherit; background: var(--surface, #26352e); border: 1px solid var(--line); border-radius: 7px; font: inherit; text-overflow: ellipsis; }
+.document-object-tools > label select { width: 100%; }
+.document-object-tools fieldset { min-width: 0; border: 0; padding: 0; margin: 12px 0; }
+.document-object-tools legend { padding: 0 0 8px; font-size: 13px; }
+.document-object-tools input[type=color] { width: 38px; height: 36px; padding: 3px; }
+.document-object-tools button { padding: 7px 10px; min-height: 34px; }

@@ -9,6 +9,9 @@ const initial = staticFiles(manifest, "index.html");
 const slides = staticFiles(manifest, "src/SlidesEditor.tsx");
 const long = staticFiles(manifest, "src/LongEditor.tsx");
 const resource = manifest["src/ResourcePanelBody.tsx"];
+const objectTools = manifest["src/DocumentObjectPanel.tsx"];
+if (!objectTools || [...initial.js, ...long.js].includes(objectTools.file))
+  throw new Error("Long-document object tools must load only on editing.");
 if (!resource || initial.js.includes(resource.file) || slides.js.includes(resource.file))
   throw new Error("Repair tools must remain on-demand in both views.");
 if (initial.js.includes(manifest["src/SlidesEditor.tsx"]!.file))

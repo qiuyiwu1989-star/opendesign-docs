@@ -8,6 +8,9 @@ import { ReviewPanel, type ReviewPanelHandle } from "./ReviewPanel";
 import { ResourcePanel } from "./ResourcePanel";
 import { ExportControl } from "./ExportControl";
 import { htmlExportBlob } from "./html-export";
+import { deferredFeature } from "./deferred-feature";
+import type { DocumentObjectPanelProps } from "./DocumentObjectPanel";
+const ObjectTools = deferredFeature<DocumentObjectPanelProps>(() => import("./DocumentObjectPanel").then(m => ({ default: m.DocumentObjectPanel })), "对象工具");
 const message = (error: unknown) => error instanceof Error ? error.message : "操作失败，请稍后重试。";
 
 export function LongEditor({
@@ -30,6 +33,9 @@ export function LongEditor({
   const [renderSource, setRenderSource] = useState(initial);
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState("");
+  const [objectId, setObjectId] = useState("");
+  const [objectSize, setObjectSize] = useState<{ width: number; height: number }>();
+  const scrollPosition = useRef(0);
   const [text, setText] = useState("");
   const [tab, setTab] = useState<"edit" | "versions" | "review">("edit");
   const [reviewVersionId, setReviewVersionId] = useState("");
@@ -85,9 +91,14 @@ export function LongEditor({
         reviewVersion?.source ?? renderSource,
         channel,
         editing && !reviewing,
-        0,
+        reviewing ? 0 : scrollPosition.current,
         reviewing,
-        undefined,
+        editing && !reviewing ? node => {
+          const loc = node.sourceCodeLocation;
+          if (loc?.startTag && node.namespaceURI === "http://www.w3.org/1999/xhtml" &&
+            /^(h[1-4]|p|div|section|article|blockquote|figure|ul|ol|li|img)$/.test(node.tagName))
+            node.attrs.push({ name: "data-doc-object", value: `doc-${loc.startOffset}` });
+        } : undefined,
         markerRuntime,
       ),
     [renderSource, channel, editing, reviewVersion, reviewing, markerRuntime],
@@ -174,6 +185,12 @@ export function LongEditor({
         return;
       const data = event.data;
       if (data.type === "ready") setReady(true);
+      if (data.type === "scroll-position" && Number.isFinite(data.scroll) && data.scroll >= 0) scrollPosition.current = Math.min(data.scroll, 1e7);
+      if (data.type === "object-select" && editing && !reviewing && !pendingText && typeof data.id === "string") {
+        setObjectId(data.id);
+        setObjectSize(data.width > 0 && data.height > 0 ? { width: data.width, height: data.height } : undefined);
+        setTab("edit");
+      }
       if (data.type === "review-open" && reviewing && typeof data.id === "string") {
         setTab("review");
         reviewPanel.current?.openThread(data.id);
@@ -195,6 +212,7 @@ export function LongEditor({
           "当前窗口宽度或排版与批注创建时不同，无法精确显示框选位置。请调整至批注注明的视口宽度；批注仍保留在原版本。",
         );
       if (data.type === "select" && typeof data.id === "string") {
+        if (pendingText) { setError("请先应用右侧文字修改。"); return; }
         setSelected(data.id);
         setTab("edit");
       }
@@ -209,7 +227,10 @@ export function LongEditor({
             (item) => item.id === data.id,
           );
           if (!item) throw new Error("这段内容暂时不能直接修改。");
-          commit(patchText(sourceRef.current, item, data.text));
+          const next = patchText(sourceRef.current, item, data.text);
+          commit(next);
+          setRenderSource(next);
+          setDirectEditing(false);
         } catch (e) {
           setError(message(e));
         }
@@ -225,6 +246,9 @@ export function LongEditor({
     if (!ready) frame.current?.contentWindow?.postMessage({ channel, type: "request-ready" }, "*");
     return () => window.removeEventListener("message", receive);
   });
+  useEffect(() => {
+    if (ready && editing && !reviewing) frame.current?.contentWindow?.postMessage({ channel, type: "object-focus", id: objectId }, "*");
+  }, [ready, channel, editing, reviewing, objectId]);
   useEffect(() => {
     if (ready && reviewing) frame.current?.contentWindow?.postMessage({ channel, type: "review-markers",
       threads: reviewData?.id === record.id ? reviewData.threads.filter(t => t.versionId === reviewVersionId) : [] }, "*");
@@ -302,6 +326,7 @@ export function LongEditor({
       commit(history.current.present, false);
       setRenderSource(history.current.present);
       setSelected("");
+      setObjectId("");
     });
   };
   const download = async () => {
@@ -394,6 +419,7 @@ export function LongEditor({
               commit(next);
               setRenderSource(next);
               setSelected("");
+              setObjectId("");
             }} />
           <ExportControl name={record.name} url={!pendingText && !directEditing ? downloadUrl : ""}
             reviewUrl={reviewUrl} versionLabel={reviewVersion?.label ?? ""}
@@ -466,7 +492,14 @@ export function LongEditor({
           </div>
           {tab === "edit" ? (
             <>
-              <h2>{target ? "文字" : "选择文字"}</h2>
+              {editing && !reviewing && <ObjectTools source={source} selected={objectId} size={objectSize}
+                disabled={!ready || saving || directEditing || pendingText}
+                onSelect={id => { setSelected(""); setObjectId(id); setObjectSize(undefined); }}
+                onApply={(expected, next, id) => {
+                  if (sourceRef.current !== expected || savingRef.current || reviewing || !editing || pendingText || directEditing) throw new Error("页面已变化，请重新选择。");
+                  commit(next); setRenderSource(next); setSelected(""); setObjectId(id); setObjectSize(undefined);
+                }} />}
+              <h2>{target ? "文字" : editing ? "双击改字" : "选择文字"}</h2>
               {target ? (
                 <>
                   <small className="muted">{target.tag.toUpperCase()}</small>
@@ -501,8 +534,8 @@ export function LongEditor({
               <details className="compatibility">
                 <summary>预览与导出说明</summary>
                 <p>
-                  复杂嵌套文字和 SVG
-                  图中文字暂不编辑。导出保留原代码与资源引用，不包含版本历史，也不是离线资源包。
+                  嵌套文字分段修改，SVG 图形内部暂不编辑。内容块沿文档顺序调整，不改为自由画布。
+                  导出保留原代码与资源引用，不包含版本历史，也不是离线资源包。
                 </p>
                 <p>
                   保留静态 HTML、内联 CSS 和
@@ -550,6 +583,7 @@ export function LongEditor({
                       commit(version.source);
                       setRenderSource(version.source);
                       setSelected("");
+                      setObjectId("");
                     }}
                   >
                     加载为草稿
@@ -569,4 +603,3 @@ export function LongEditor({
     </div>
   );
 }
-

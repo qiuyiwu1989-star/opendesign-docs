@@ -160,6 +160,14 @@ function bridge(
     let marker = null, marked = null, start = null;
     const comments = ${markerRuntime ? `reviewing ? (${markerRuntime})(id => send('review-open', {id})) : null` : "null"};
     const isComment = e => e.target instanceof Element && e.target.closest('[data-doc-review]');
+    let selectedObject = null;
+    const selectObject = node => {
+      selectedObject?.removeAttribute('data-doc-selected'); selectedObject = node;
+      if (!node) return;
+      node.setAttribute('data-doc-selected', '');
+      send('object-select', {id:node.getAttribute('data-doc-object'), width:node.offsetWidth, height:node.offsetHeight});
+    };
+    window.addEventListener('scroll', () => send('scroll-position', {scroll:window.scrollY}), {passive:true});
     const clearMarker = () => { marker?.remove(); marker = null; marked = null; };
     const draw = anchor => {
       clearMarker();
@@ -209,6 +217,10 @@ function bridge(
       if (anchor) e.preventDefault();
       if (reviewing) { e.preventDefault(); return; }
       const node = target(e);
+      if (editing && e.target instanceof Element) {
+        selectObject(e.target.closest('[data-doc-object]'));
+        if (!node) send('select', {id:''});
+      }
       if (node) send('select', {id: node.getAttribute('data-doc-text')});
       if (!editing && anchor) {
         const href = anchor.getAttribute('href');
@@ -261,6 +273,10 @@ function bridge(
     window.addEventListener('message', e => {
       if (e.source !== parent || e.data?.channel !== channel) return;
       if (e.data.type === 'request-ready') { send('ready'); return; }
+      if (editing && e.data.type === 'object-focus' && typeof e.data.id === 'string') {
+        selectObject([...document.querySelectorAll('[data-doc-object]')].find(n => n.getAttribute('data-doc-object') === e.data.id) ?? null);
+        return;
+      }
       if (reviewing && e.data.type === 'review-markers' && Array.isArray(e.data.threads)) {
         clearMarker(); comments?.update(e.data.threads); return;
       }
@@ -367,6 +383,6 @@ export function createPreview(
     )
     .replace(
       "</body>",
-      `<style>[data-doc-text]:focus{outline:2px solid #267565;outline-offset:4px}${editing ? "[data-doc-text]:hover{outline:1px dashed #267565;outline-offset:3px;cursor:text}[contenteditable]{white-space:pre-wrap}" : ""}${reviewing && !reviewReadOnly ? "html,body{cursor:crosshair!important;user-select:none!important}" : ""}</style><script nonce="${channel}">${bridge(channel, editing, scroll, reviewing, markerRuntime, reviewReadOnly)}</script></body>`,
+      `<style>[data-doc-text]:focus{outline:2px solid #267565;outline-offset:4px}${editing ? "[data-doc-object]:hover{outline:1px dashed #267565;outline-offset:3px}[data-doc-selected]{outline:2px solid #267565!important;outline-offset:3px}[data-doc-text]:hover{outline:1px dashed #267565;outline-offset:3px;cursor:text}[contenteditable]{white-space:pre-wrap}" : ""}${reviewing && !reviewReadOnly ? "html,body{cursor:crosshair!important;user-select:none!important}" : ""}</style><script nonce="${channel}">${bridge(channel, editing, scroll, reviewing, markerRuntime, reviewReadOnly)}</script></body>`,
     );
 }

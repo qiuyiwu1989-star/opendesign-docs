@@ -1,6 +1,7 @@
 # Tasks
 
 ## Now
+- [x] Spec035: sequential review labels, marker-to-anchor highlight/focus and a compact accessible line-icon language for frequent toolbar actions.
 - [x] Spec034: shared one-source parse snapshot plus reproducible 100/400/near-5-MiB long-document benchmark.
 - [ ] Spec034 browser gates: isolated gesture request/save/reload passed at 100/75/50%. Downloaded deletion-file reimport awaits explicit local-file upload authorization; native pointer remains separate.
 - Current alpha deployed at https://doc.opendesign.cc/ on 2026-09-08, source `9820591` (spec029 + spec030 readiness fix). Native edit/save/reload/download passed. Keep this release stable for user trial; no GitHub push this round. See docs/DEPLOYMENT.md.
@@ -26,6 +27,7 @@
 - [ ] P2 voice comments only after collaboration ownership, attachment retention and consent rules are explicit.
 
 ## Done
+- Spec035 review wayfinding: document markers and inspector anchors now share stable `1…n` labels; marker selection restores the source highlight and focuses the matching thread. Undo/redo/resource/export/save use consistent compact line icons while mode names stay explicit. Three-comment browser QA and marker `2` locate passed. See spec and acceptance record.
 - Spec034 performance slice: shared read-only parse snapshot and `npm run benchmark:long`; near-5-MiB cold catalog 162.1 ms and warm selected-object operations 1.0 ms on the acceptance host. Request gesture/save/reload matrix passed at 100/75/50%. See spec and acceptance record.
 - Spec033: source-only selected-style readback never invents defaults; direct guarded delete is undoable and survives save/refresh. Real downloaded HTML matches the intended single-block removal exactly. See spec and acceptance record.
 - Spec031: real Bento marker rendering adaptation with MIT notice; compact persistent text/region markers, click-through to threads, resolved-state visibility; exact selected-version export and safe standalone read-only review snapshots. Mixed text runs preserve original tags and legacy leaf IDs. Extracted LongEditor to an on-demand module and kept review runtime lazy. See acceptance for exported-file checks and viewport/pointer limits.

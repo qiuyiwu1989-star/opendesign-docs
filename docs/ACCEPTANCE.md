@@ -1,5 +1,13 @@
 # Acceptance record
 
+## Spec035: review wayfinding and toolbar icon pass (2026-09-10, local only)
+
+- Automated: 275 tests across 39 files pass, including sequential marker numbering, active selection, resolved/missing markers and authenticated thread opening. Source audit, production dependency audit, typecheck, whitespace checks and both build bases pass.
+- `/docs/` static JS closures remain under their fixed gates: initial 425,831 bytes, long document 449,894 bytes and slides 476,092 bytes. Review marker code remains lazy and outside reading/slides closures.
+- In an isolated local browser origin, created three text comments and observed document markers `1`, `2`, `3` plus matching numbered inspector anchors. Clicking marker `2` restored an amber outline around “设计留在原处”, emphasized the marker and focused its matching thread card.
+- Toolbar QA confirms consistent self-authored line icons for undo, redo, resources, export and save without increasing header height. Mode switches retain clear text; accessible names and tooltips remain. No Apple asset is distributed.
+- No production deployment, public push, cloud review identity, voice comment or realtime collaboration change.
+
 ## Spec034: delivery and long-document performance baseline (2026-09-09, local only)
 
 - Added a one-source immutable parse snapshot shared by deferred contextual long-document catalogs, object capability checks and selected-style inspection. A changed source replaces the cache. Base reading and preview construction retain their existing parsers so the editor-only optimization stays out of the reading closure; preview also strips and decorates a disposable tree before serialization.

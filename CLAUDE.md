@@ -1,6 +1,6 @@
 # OpenDesign Docs
 
-Latest local work: Spec034 shares one immutable last-source parse snapshot inside deferred contextual long-document editing and adds `npm run benchmark:long` for 100/400/near-5-MiB documents. Base reading and preview parsing stay outside that cache to preserve the reading bundle. Request-driven gesture persistence passes at 100/75/50%; native pointer and chooser reimport remain open. No deployment/push. See specs 032–034, TASKS and acceptance.
+Latest local work: Spec035 makes review labels sequential and restores the selected anchor highlight plus matching thread focus. Frequent toolbar actions now use one compact self-authored line-icon language while reading/edit/review remain explicit text modes. Spec034's cached source inspection and performance benchmark remain intact. Native pointer and chooser reimport are still open. No deployment/push. See specs 032–035, TASKS and acceptance.
 
 ## Goal
 Preserve HTML visual expression while enabling direct editing, versioned review and reliable delivery. Library supplies references; Studio generates; Docs edits and reviews. Do not require an Agent backend.

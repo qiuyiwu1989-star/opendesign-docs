@@ -186,6 +186,32 @@ input {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+.tool-button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.icon-button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+[data-icon]::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background: currentColor;
+  -webkit-mask: var(--tool-icon) center / contain no-repeat;
+  mask: var(--tool-icon) center / contain no-repeat;
+}
+[data-icon="undo"] { --tool-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 7 4 12l5 5'/%3E%3Cpath d='M5 12h8a6 6 0 0 1 6 6'/%3E%3C/svg%3E"); }
+[data-icon="redo"] { --tool-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 7 5 5-5 5'/%3E%3Cpath d='M19 12h-8a6 6 0 0 0-6 6'/%3E%3C/svg%3E"); }
+[data-icon="resources"] { --tool-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='16' rx='2'/%3E%3Ccircle cx='8' cy='9' r='1.5'/%3E%3Cpath d='m5 18 5-5 3 3 2-2 4 4'/%3E%3C/svg%3E"); }
+[data-icon="export"] { --tool-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 15V3m0 0L8 7m4-4 4 4'/%3E%3Cpath d='M5 12v7h14v-7'/%3E%3C/svg%3E"); }
+[data-icon="save"] { --tool-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h10l3 3v15H6z'/%3E%3Cpath d='M9 3v6h6V3M9 16l2 2 4-5'/%3E%3C/svg%3E"); }
 .segmented {
   display: flex;
   border: 1px solid var(--line);

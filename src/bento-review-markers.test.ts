@@ -21,7 +21,7 @@ describe('adapted Bento marker bridge', () => {
     const html = createPreview('<p>Text</p>', 'test-channel-123', false, 0, true, undefined, reviewMarkerScript);
     const runtime = html.match(/<script nonce="test-channel-123">([\s\S]*?)<\/script>/)![1]!;
     new Script(runtime).runInContext(createContext({parent,window:win,Element:class {},requestAnimationFrame:(fn:any)=>fn(),
-      document:{createElement:make,documentElement:{appendChild(){}},querySelectorAll:()=>[target],addEventListener(){}}}));
+      document:{createElement:make,documentElement:{appendChild(){},append(){}},querySelectorAll:()=>[target],addEventListener(){}}}));
     const anchor={kind:'text' as const,id:target.getAttribute(),quote:'Text'};
     let review=addThread({id:'d',revision:0,threads:[]},'v',anchor,reviewMessage('R','Check this'));
     const send=(data:any, source=parent)=>handlers.message!({source,data:{channel:'test-channel-123',...data}});
@@ -31,15 +31,20 @@ describe('adapted Bento marker bridge', () => {
     send({type:'request-ready'}); expect(sent.at(-1).type).toBe('ready');
     send({type:'review-markers',threads:review.threads});
     expect(buttons[0].style.left).toBe('188px');
+    expect(buttons[0].textContent).toBe('1');
     buttons[0].click({stopPropagation(){}});
     expect(sent.at(-1)).toMatchObject({type:'review-open',id:review.threads[0]!.id});
+    expect(buttons[0].attrs['data-active']).toBe('');
     review=updateThread(review,review.threads[0]!.id,true);
     send({type:'review-markers',threads:review.threads});
     expect(buttons[1].className).toContain('resolved');
     const region={kind:'region' as const,x:20,y:30,width:100,height:60,viewportWidth:900};
-    const regionReview=addThread({id:'d',revision:0,threads:[]},'v',region,reviewMessage('R','region'));
+    const regionReview=addThread(review,'v',region,reviewMessage('R','region'));
     send({type:'review-markers',threads:regionReview.threads});
-    expect(buttons[2].title).toContain('位置待定位');
-    expect(buttons[2].style.top).toBe('8px');
+    expect(buttons.slice(2).map(button => button.textContent)).toEqual(['1','2']);
+    expect(buttons[3].title).toContain('位置待定位');
+    expect(buttons[3].style.top).toBe('8px');
+    buttons[3].click({stopPropagation(){}});
+    expect(sent.at(-1)).toMatchObject({type:'review-open',id:regionReview.threads[1]!.id});
   });
 });

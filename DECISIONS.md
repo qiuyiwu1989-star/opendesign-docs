@@ -1,5 +1,7 @@
 # Decisions
 
+- 2026-09-10: Review bubbles identify threads by stable current-version order, not message count. Clicking a bubble must complete the whole navigation loop: activate the marker, restore the source highlight and focus the matching inspector thread. Keep reading/edit/review as words; use self-authored line icons only for frequent actions, with visible labels on resource/export/save. Keynote is a density and interaction reference, not an asset source. Confidence: high.
+
 - 2026-09-09: Contextual long-document catalogs, capability checks and selected-style inspection share one last-source parse snapshot inside the deferred editing tools. Preview and base reading paths keep their existing parsers so this optimization does not consume the remaining reading-bundle budget. This removes repeated near-5-MiB full-document parses without letting preview metadata leak into source operations. The cache retains one exact source and is replaced on change. Confidence: high.
 
 - 2026-09-09: Performance acceptance uses a reproducible synthetic development benchmark with separate cold-catalog and warm-selection ceilings. It protects against repeated-parse regressions but is not an end-user latency promise. Browser gesture request buttons verify coordinate serialization across outer zoom; native pointer drag/resize remains a distinct gate. Confidence: high.

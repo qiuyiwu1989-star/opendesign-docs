@@ -179,6 +179,11 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
     };
     const version = record.versions.find((v) => v.id === versionId);
     const view = reviewView(review.threads, versionId, filter, reply.trim() ? replyId : "");
+    const ordinal = new Map(
+      review.threads
+        .filter((thread) => thread.versionId === versionId)
+        .map((thread, index) => [thread.id, index + 1]),
+    );
     return (
       <section className="review-panel" aria-label="本机批注">
         <header className="review-heading">
@@ -287,8 +292,8 @@ export const ReviewPanel = forwardRef<ReviewPanelHandle, Props>(
                 onClick={() => onLocate(thread.anchor)}
               >
                 {thread.anchor.kind === "text"
-                  ? `“${thread.anchor.quote.slice(0, 60)}” ↗`
-                  : "框选区域 ↗"}
+                  ? `${ordinal.get(thread.id)} · “${thread.anchor.quote.slice(0, 60)}” ↗`
+                  : `${ordinal.get(thread.id)} · 框选区域 ↗`}
               </button>
               {thread.messages.map((item) => (
                 <div className="review-message" key={item.id}>

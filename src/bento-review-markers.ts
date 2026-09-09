@@ -7,13 +7,13 @@ import type { ReviewThread } from "./review";
 import notice from "../NOTICE?raw";
 
 /** Self-contained: serialized into the isolated preview, never imported HTML. */
-export function mountReviewMarkers(open: (id: string) => void) {
+export function mountReviewMarkers(open: (id: string, anchor: ReviewThread["anchor"]) => void) {
   const host = document.createElement("div");
   host.setAttribute("data-doc-review", "");
   host.style.cssText = "all:initial!important;position:fixed!important;inset:0!important;pointer-events:none!important;z-index:2147483647!important;";
   const layer = host.attachShadow({ mode: "closed" });
   const style = document.createElement("style");
-  style.textContent = `button{position:absolute;pointer-events:auto;box-sizing:border-box;min-width:24px;height:24px;padding:0 5px;border:1px solid #fff;border-radius:12px;background:#b66016;color:#fff;box-shadow:0 1px 5px #0004;font:600 12px system-ui;cursor:pointer}button.resolved{background:#50716a}button:focus-visible{outline:3px solid #177ae6;outline-offset:2px}button[data-missing]{border:2px dashed #fff}`;
+  style.textContent = `button{position:absolute;pointer-events:auto;box-sizing:border-box;min-width:24px;height:24px;padding:0 5px;border:1px solid #fff;border-radius:12px;background:#b66016;color:#fff;box-shadow:0 1px 5px #0004;font:600 12px system-ui;cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}button.resolved{background:#50716a}button:hover{transform:scale(1.08)}button[data-active]{box-shadow:0 0 0 3px #f4bd4966,0 2px 7px #0006;transform:scale(1.12)}button:focus-visible{outline:3px solid #177ae6;outline-offset:2px}button[data-missing]{border:2px dashed #fff}`;
   layer.appendChild(style);
   document.documentElement.appendChild(host);
   let items: { thread: ReviewThread; marker: HTMLButtonElement }[] = [];
@@ -46,7 +46,7 @@ export function mountReviewMarkers(open: (id: string) => void) {
       marker.style.top = `${y!}px`;
       marker.hidden = y! < -24 || y! > window.innerHeight;
       const message = thread.messages[0];
-      marker.title = `${unavailable ? "位置待定位 · " : ""}${thread.resolved ? "已解决" : "待处理"} · ${message?.author ?? ""}: ${message?.body.slice(0, 80) ?? ""}`;
+      marker.title = `批注 ${marker.textContent} · ${unavailable ? "位置待定位 · " : ""}${thread.resolved ? "已解决" : "待处理"} · ${message?.author ?? ""}: ${message?.body.slice(0, 80) ?? ""}`;
       marker.setAttribute("aria-label", marker.title);
     }
   };
@@ -57,12 +57,16 @@ export function mountReviewMarkers(open: (id: string) => void) {
   return {
     update(threads: ReviewThread[]) {
       items.forEach(item => item.marker.remove());
-      items = threads.slice(0, 500).map(thread => {
+      items = threads.slice(0, 500).map((thread, index) => {
         const marker = document.createElement("button");
         marker.type = "button";
         marker.className = "ed-comment-marker" + (thread.resolved ? " resolved" : "");
-        marker.textContent = String(thread.messages.length);
-        marker.addEventListener("click", ev => { ev.stopPropagation(); open(thread.id); });
+        marker.textContent = String(index + 1);
+        marker.addEventListener("click", ev => {
+          ev.stopPropagation();
+          items.forEach(item => item.marker.toggleAttribute("data-active", item.thread.id === thread.id));
+          open(thread.id, thread.anchor);
+        });
         layer.appendChild(marker);
         return { thread, marker };
       });

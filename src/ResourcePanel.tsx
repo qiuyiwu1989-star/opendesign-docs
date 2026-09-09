@@ -28,7 +28,7 @@ export function ResourcePanel(props: ResourcePanelProps) {
   }, [open]);
   useEffect(() => { panel.current?.hidePopover(); }, [props.contextKey]);
   return <>
-    <button ref={trigger} type="button" className="resource-trigger"
+    <button ref={trigger} type="button" className="resource-trigger tool-button" data-icon="resources"
       popoverTarget={id} aria-expanded={open} aria-controls={id}
       title="资源 · 检查与修复图片、字体" onClick={positionPanel}>资源</button>
     <div ref={panel} id={id} popover="auto" className="resource-panel"

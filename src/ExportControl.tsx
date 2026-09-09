@@ -39,7 +39,8 @@ export function ExportControl({ name, url, disabled, onPrepare, onDismiss, revie
     trigger.current?.focus();
   };
   return <>
-    <button ref={trigger} type="button" disabled={disabled} aria-controls={id}
+    <button ref={trigger} type="button" className="tool-button" data-icon="export"
+      disabled={disabled} aria-controls={id}
       aria-expanded={open} title="导出当前 HTML" onClick={() => {
         if (open) close();
         else if (url) { positionPanel(); panel.current?.showPopover(); panel.current?.querySelector<HTMLAnchorElement>("a")?.focus(); }

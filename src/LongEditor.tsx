@@ -394,21 +394,21 @@ export function LongEditor({
           {!reviewing && (
             <>
               <button
+                className="icon-button"
+                data-icon="undo"
                 aria-label="撤销"
                 title="撤销"
                 disabled={saving || !ready || !history.current.past.length}
                 onClick={() => undoRedo("undo")}
-              >
-                ↶
-              </button>
+              />
               <button
+                className="icon-button"
+                data-icon="redo"
                 aria-label="重做"
                 title="重做"
                 disabled={saving || !ready || !history.current.future.length}
                 onClick={() => undoRedo("redo")}
-              >
-                ↷
-              </button>
+              />
             </>
           )}
           <ResourcePanel source={reviewVersion?.source ?? source}
@@ -426,7 +426,8 @@ export function LongEditor({
             disabled={saving || !ready || (reviewing && (!reviewData || reviewDirty))} onPrepare={() => flush(() => void download())}
             onDismiss={() => { setDownloadUrl(""); setReviewUrl(""); }} />
           <button
-            className="primary"
+            className="primary tool-button"
+            data-icon="save"
             disabled={saving || !ready || reviewing}
             onClick={save}
           >

@@ -7,7 +7,7 @@ import { staticFiles } from "../scripts/bundle-metrics";
 describe("spec026 on-demand loading", () => {
   it("does not inspect or mount resource tools in the collapsed shell", () => {
     const html = renderToStaticMarkup(<ResourcePanel source='<img src="missing.png">' contextKey="v1" disabled={false} onApply={() => { throw new Error('unexpected write'); }} />);
-    expect(html).toContain('class="resource-trigger"');
+    expect(html).toContain('class="resource-trigger tool-button"');
     expect(html).toContain('popover="auto"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).not.toContain('resource-body');

@@ -158,7 +158,7 @@ function bridge(
     let active = null, before = '';
     const target = e => e.target instanceof Element ? e.target.closest('[data-doc-text]') : null;
     let marker = null, marked = null, start = null;
-    const comments = ${markerRuntime ? `reviewing ? (${markerRuntime})(id => send('review-open', {id})) : null` : "null"};
+    const comments = ${markerRuntime ? `reviewing ? (${markerRuntime})((id, anchor) => { draw(anchor); send('review-open', {id}); }) : null` : "null"};
     const isComment = e => e.target instanceof Element && e.target.closest('[data-doc-review]');
     let selectedObject = null;
     const selectObject = node => {

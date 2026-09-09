@@ -15,6 +15,7 @@
     "check:bundle": "tsx scripts/check-bundle.ts",
     "typecheck": "tsc --noEmit",
     "lab:gestures": "tsx scripts/build-gesture-lab.ts",
+    "benchmark:long": "tsx scripts/measure-long-document.ts",
     "test": "vitest run",
     "audit": "tsx scripts/audit.ts"
   },

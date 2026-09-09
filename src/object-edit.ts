@@ -1,7 +1,8 @@
-import { parse, type DefaultTreeAdapterMap } from "parse5";
+import type { DefaultTreeAdapterMap } from "parse5";
 import { inspectSlides, type SlideObject, type SlidePage } from "./slides";
 import { MAX_DOCUMENT_BYTES } from "./slide-insert";
 import { validateLocalImage, type LocalImage } from "./image-import";
+import { readSourceTree } from "./source-tree";
 
 type Node = DefaultTreeAdapterMap["node"];
 type Element = DefaultTreeAdapterMap["element"];
@@ -70,20 +71,9 @@ function locate(source: string, target: SlideObject, catalog: ObjectCatalog = in
     current.title !== target.title
   )
     throw new Error("对象已变化，请重新选择。");
-  const malformed: number[] = [];
-  const tree = parse(source, {
-    sourceCodeLocationInfo: true,
-    onParseError: (e) => {
-      if (e.code === "duplicate-attribute") malformed.push(e.startOffset);
-    },
-  });
-  let node: Element | undefined;
-  function visit(n: Node) {
-    if (isElement(n) && n.sourceCodeLocation?.startOffset === current!.start)
-      node = n;
-    if ("childNodes" in n) n.childNodes.forEach(visit);
-  }
-  visit(tree);
+  const tree = readSourceTree(source);
+  const malformed = tree.duplicateAttributeOffsets;
+  const node = tree.elementsByStart.get(current.start);
   if (!node?.sourceCodeLocation?.startTag) throw unsupported();
   const nodes: Element[] = [];
   function collect(n: Node) {

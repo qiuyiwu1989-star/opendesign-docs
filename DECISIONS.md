@@ -1,5 +1,9 @@
 # Decisions
 
+- 2026-09-09: Contextual long-document catalogs, capability checks and selected-style inspection share one last-source parse snapshot inside the deferred editing tools. Preview and base reading paths keep their existing parsers so this optimization does not consume the remaining reading-bundle budget. This removes repeated near-5-MiB full-document parses without letting preview metadata leak into source operations. The cache retains one exact source and is replaced on change. Confidence: high.
+
+- 2026-09-09: Performance acceptance uses a reproducible synthetic development benchmark with separate cold-catalog and warm-selection ceilings. It protects against repeated-parse regressions but is not an end-user latency promise. Browser gesture request buttons verify coordinate serialization across outer zoom; native pointer drag/resize remains a distinct gate. Confidence: high.
+
 - 2026-09-09: The long-document inspector reports only supported literal inline style values from the selected source object. Unknown cascade, CSS variables, relative units, semantic defaults and mixed text runs are never presented as a concrete default; choosing a control explicitly normalizes that property. This keeps the compact Keynote-like panel honest without introducing computed-style or DOM serialization drift. Confidence: high.
 
 - 2026-09-09: Guarded long-document deletion is immediate and reversible, not modal. Existing undo/redo and immutable saved versions provide recovery; a blocking confirmation interrupted real editing and browser QA. Exact downloaded source is the destructive-action delivery gate, while chooser-driven reimport remains separately reported. Confidence: high.

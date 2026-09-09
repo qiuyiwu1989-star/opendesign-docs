@@ -1,15 +1,15 @@
 # Tasks
 
 ## Now
-- Spec033 local candidate: truthful selected-object style hints plus direct reversible delete. Browser delete/undo/save/refresh and exact on-disk source verification pass. 273 tests / 38 files, typecheck, both builds and bundle budgets pass; no push/deployment.
-- Spec032 at isolated local origins: contextual long-document style, image insertion/replacement, sibling moves and guarded clone/delete, using the shared editing engine. Bounded Moveable/Selecto trial remains outside production pending coordinate/native-pointer gates. See spec032 and acceptance record.
+- [x] Spec034: shared one-source parse snapshot plus reproducible 100/400/near-5-MiB long-document benchmark.
+- [ ] Spec034 browser gates: isolated gesture request/save/reload passed at 100/75/50%. Downloaded deletion-file reimport awaits explicit local-file upload authorization; native pointer remains separate.
 - Current alpha deployed at https://doc.opendesign.cc/ on 2026-09-08, source `9820591` (spec029 + spec030 readiness fix). Native edit/save/reload/download passed. Keep this release stable for user trial; no GitHub push this round. See docs/DEPLOYMENT.md.
 
 ## Next
 - [x] Non-modal guarded delete, undo, save, refresh and exact-source download verified on a fresh isolated origin. The actual downloaded file equals the public demo source with only the selected paragraph removed and contains no preview metadata.
 - [ ] Complete chooser-driven reimport of the newly downloaded deletion result. Exact on-disk source verification is complete but is not a substitute for reimport.
 - [x] Approved foundations scope: long-document image/block operations, contextual insertion/style controls and bounded Moveable/Selecto trial (spec032). The experiment is not a production gesture migration.
-- [ ] Before gesture migration, finish native drag/resize/save/reload at 50/75/100% zoom. The isolated adapter now converts Moveable before-matrix distance so scale 1.096 + request 10px writes 10.0px in tests; keep the libraries out of production until browser gates pass.
+- [ ] Before gesture migration, finish real pointer drag/resize at 50/75/100% zoom. Request-driven move plus save/reload passes across all three zoom levels and preserves scale/rotation; this is not native-pointer acceptance. Keep the libraries out of production.
 - [ ] Existing development-only Vitest 3.2.7 advisory GHSA-82fw-gwwq-j7x9: separately verify a patched major-version upgrade. No force-fix or exposed test server; npm audit found no production dependency issue this round.
 - [ ] Recheck physical drag/resize after spec029 threshold change. This round's browser drag automation produced no confirmed movement; bridge event tests are not native-pointer acceptance. Verify native Chinese IME candidate cancellation as well.
 - [ ] Extend representative pointer/region checks to touch devices, physical mid-gesture cancellation and native fullscreen.
@@ -20,12 +20,13 @@
 
 ## Later roadmap
 - [ ] P1 delivery matrix: real WOFF1/WOFF2/CJK font and PNG/WebP decode, save, download and reimport across representative browsers.
-- [ ] P1 performance baseline: 100/400-object long documents and near-5-MiB imports; keep editing tools lazy and record measured interaction cost.
+- [x] P1 performance baseline: reproducible 100/400-object and near-5-MiB benchmark; one-source read snapshot prevents repeated full parses and tools remain lazy.
 - [ ] P1 concise UX/accessibility pass: keyboard order, focus return, labels, narrow/touch layouts and native fullscreen.
 - [ ] P2 collaboration architecture: identity, anchored comments, permissions, revocable share links and audit history before cloud writes.
 - [ ] P2 voice comments only after collaboration ownership, attachment retention and consent rules are explicit.
 
 ## Done
+- Spec034 performance slice: shared read-only parse snapshot and `npm run benchmark:long`; near-5-MiB cold catalog 162.1 ms and warm selected-object operations 1.0 ms on the acceptance host. Request gesture/save/reload matrix passed at 100/75/50%. See spec and acceptance record.
 - Spec033: source-only selected-style readback never invents defaults; direct guarded delete is undoable and survives save/refresh. Real downloaded HTML matches the intended single-block removal exactly. See spec and acceptance record.
 - Spec031: real Bento marker rendering adaptation with MIT notice; compact persistent text/region markers, click-through to threads, resolved-state visibility; exact selected-version export and safe standalone read-only review snapshots. Mixed text runs preserve original tags and legacy leaf IDs. Extracted LongEditor to an on-demand module and kept review runtime lazy. See acceptance for exported-file checks and viewport/pointer limits.
 - Spec029: collapse precise placement/nudges, hide unsupported arrangement controls, cancel staged text/style/position with Escape, guard IME shortcuts and direct-text/arrangement conflicts. 239 tests / 32 files and both build budgets pass. Four private HTML samples pass source-span audit; real 10-page VR deck edit/save/refresh/download/reimport retains exact expected HTML. Pointer/device acceptance remains separate. Local only.

@@ -1,6 +1,7 @@
-import { parse, type DefaultTreeAdapterMap } from "parse5";
+import type { DefaultTreeAdapterMap } from "parse5";
 import { getObjectCapabilities, type ObjectCatalog } from "./object-edit";
 import type { SlideObject } from "./slides";
+import { readSourceTree } from "./source-tree";
 
 type Node = DefaultTreeAdapterMap["node"];
 type Element = DefaultTreeAdapterMap["element"];
@@ -124,12 +125,7 @@ export function readObjectTextStyle(source: string, target: SlideObject, catalog
         current[key as keyof SlideObject] !== target[key as keyof SlideObject]) ||
       !getObjectCapabilities(source, target, catalog).textStyle)
     throw new Error("对象已变化或不支持读取文字样式，请重新选择。");
-  let selected: Element | undefined;
-  const find = (node: Node) => {
-    if ("tagName" in node && node.sourceCodeLocation?.startOffset === target.start) selected = node;
-    if ("childNodes" in node) node.childNodes.forEach(find);
-  };
-  find(parse(source, { sourceCodeLocationInfo: true }));
+  const selected = readSourceTree(source).elementsByStart.get(target.start);
   if (!selected) throw new Error("对象不存在，请重新选择。");
   const tag = selected.sourceCodeLocation?.startTag;
   const styleLocation = selected.sourceCodeLocation?.attrs?.style;

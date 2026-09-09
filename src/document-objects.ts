@@ -1,8 +1,6 @@
-import { parse, type DefaultTreeAdapterMap } from "parse5";
 import type { SlideObject, SlidePage } from "./slides";
+import { readSourceTree, type SourceElement as Element, type SourceNode as Node } from "./source-tree";
 
-type Node = DefaultTreeAdapterMap["node"];
-type Element = DefaultTreeAdapterMap["element"];
 const allowed = new Set("h1 h2 h3 h4 p div section article blockquote figure ul ol li img".split(" "));
 const blocked = new Set("head script style svg math template noscript iframe object embed textarea".split(" "));
 const isElement = (node: Node): node is Element => "tagName" in node;
@@ -22,7 +20,7 @@ export function documentObjectNodes(source: string) {
     }
     if ("childNodes" in node) node.childNodes.forEach(child => visit(child, depth + 1));
   };
-  visit(parse(source, { sourceCodeLocationInfo: true }), 0);
+  visit(readSourceTree(source).root, 0);
   cachedSource = source;
   cachedNodes = nodes.slice(0, 400);
   return cachedNodes;

@@ -1,5 +1,14 @@
 # Acceptance record
 
+## Spec034: delivery and long-document performance baseline (2026-09-09, local only)
+
+- Added a one-source immutable parse snapshot shared by deferred contextual long-document catalogs, object capability checks and selected-style inspection. A changed source replaces the cache. Base reading and preview construction retain their existing parsers so the editor-only optimization stays out of the reading closure; preview also strips and decorates a disposable tree before serialization.
+- Final automated gate: 275 tests / 39 files, typecheck, example audit, production-dependency audit and both base-path builds pass. `/docs/` closures: initial 425802 bytes, long reading 449587, slides 475982; existing budgets were not raised.
+- `npm run benchmark:long` validates 100 and 400-object documents plus a deterministic 5,241,856-byte / 400-object case. Acceptance-host sample: 2.7 / 0.8 ms cold/warm for 100 objects, 3.0 / 0.8 ms for 400, and 162.1 / 1.0 ms near 5 MiB. Ceilings are deliberately conservative and catch repeated full parses; these numbers are not an end-user performance promise.
+- Isolated browser selected the rotated card, requested scale 1.096 and successive 10px moves at outer 100%, 75% and 50%. Saved/reloaded source progressed through x=10, x=20 and x=30 while retaining `rotate(6deg)` and scale 1.096. These are programmatic Moveable requests through the real sandbox/host bridge, not native pointer drag/resize acceptance.
+- Chooser-driven reimport of `/Users/qiu/Downloads/体验文档-edited.html` was not performed because browser file upload requires explicit authorization. Exact on-disk source verification from spec033 remains valid but is not relabelled as import evidence.
+- No production deployment, GitHub push, production dependency, schema change or user-owned browser tab mutation.
+
 ## Spec033: inspector fidelity and delivery closure (2026-09-09, local only)
 
 - The compact long-document inspector reads supported literal inline font size, color, weight and alignment from the selected exact-source object. Unknown stylesheet/cascade values and mixed text runs are labelled rather than replaced with a fake 24px/default color. Parsing is source-only: no computed CSS, relative units, variables, broad shorthand interpretation or DOM serialization.

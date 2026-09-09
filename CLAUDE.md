@@ -1,6 +1,6 @@
 # OpenDesign Docs
 
-Latest local work: Spec033 makes the compact long-document inspector reflect supported literal inline values without inventing browser defaults, and closes guarded delete/undo/save/refresh/on-disk export. `DocumentObjectPanel` remains lazy and outside the reading closure. Spec032 supplies the underlying flow/style/image/block operations. `experiments/gestures` remains development-only until coordinate and native-pointer gates pass. No deployment/push. See specs 032–033, TASKS and acceptance.
+Latest local work: Spec034 shares one immutable last-source parse snapshot inside deferred contextual long-document editing and adds `npm run benchmark:long` for 100/400/near-5-MiB documents. Base reading and preview parsing stay outside that cache to preserve the reading bundle. Request-driven gesture persistence passes at 100/75/50%; native pointer and chooser reimport remain open. No deployment/push. See specs 032–034, TASKS and acceptance.
 
 ## Goal
 Preserve HTML visual expression while enabling direct editing, versioned review and reliable delivery. Library supplies references; Studio generates; Docs edits and reviews. Do not require an Agent backend.
@@ -17,7 +17,7 @@ Standalone React, TypeScript, Vite, parse5, Vitest. Browser IndexedDB `opendesig
 - Explicit approval required for deployment, production changes and destructive operations.
 
 ## Current state
-Spec033 local candidate: source-only selected-style readback and reversible direct deletion are implemented. 273 tests / 38 files, typecheck and both builds/budgets pass. Browser QA on an isolated origin verified delete, undo, save, refresh and an actual downloaded file that differs from the public demo only by the selected paragraph. Native chooser reimport of that download remains an explicit open gate. Spec032 provides long-document image/block operations and a development-only Moveable/Selecto experiment; its coordinate adapter passes source tests but native gesture acceptance remains open, so do not import those packages into production. Production still `9820591` below; no push/deploy this round.
+Spec034 local candidate: one-source parse sharing removes repeated large-document parsing while preserving exact-source guards. The reproducible benchmark covers 100 and 400-object documents plus a near-5-MiB case. 275 tests / 39 files, typecheck and both build/bundle gates pass. The isolated Moveable adapter has browser request/save/reload evidence at 100/75/50%, but no native-pointer migration approval. Spec033/032 continue to provide truthful style readback, reversible delete and long-document block/image operations. The specific deletion download still needs an explicitly authorized chooser reimport. Production remains `9820591`; no push/deploy.
 
 Production alpha: `9820591` deployed at https://doc.opendesign.cc/ on 2026-09-08T05:44:52Z, with explicit user authorization. Spec030 fixes the one-shot slide-ready race through an authenticated readiness handshake. 240 tests, typecheck and root build/budget pass; native production edit/save/reload/download passed. Schema-v3-compatible rollback and legacy assets retained. No server database, shared-service restart, CSP relaxation or GitHub push. User trial now takes priority over further deployment. Historical local-only statements below describe earlier stages; see docs/DEPLOYMENT.md.
 

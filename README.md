@@ -72,7 +72,7 @@ npm run audit -- /absolute/path/to/your/html-directory
 
 Audit scripts read local files without executing their scripts or loading remote assets. Never commit private samples, recordings, secrets or production configuration. CI tests/builds only; it does not deploy.
 
-See [roadmap](docs/ROADMAP.md), [acceptance](docs/ACCEPTANCE.md) and [security boundaries](SECURITY.md).
+Start with the confirmed [project memory](docs/PROJECT-MEMORY.md). See the [roadmap](docs/ROADMAP.md), [acceptance record](docs/ACCEPTANCE.md) and [security boundaries](SECURITY.md) for detail.
 
 ## License and provenance
 

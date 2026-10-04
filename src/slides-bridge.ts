@@ -28,7 +28,9 @@ export function slideBridge(channel: string, pageId: string) {
     document.documentElement.style.cssText+=';margin:0!important;overflow:hidden!important;';
     page.style.cssText+=';box-sizing:border-box!important;position:absolute!important;margin:0!important;max-width:none!important;max-height:none!important;width:'+w+'px!important;height:'+h+'px!important;transform-origin:0 0!important;translate:none!important;scale:none!important;rotate:none!important;visibility:visible!important;opacity:1!important;';
     const freeze=document.createElement('style');freeze.textContent='*{animation:none!important;transition:none!important}[contenteditable]{white-space:pre-wrap!important}';document.head.append(freeze);
-    let zoom=1, selected=null, active=null, before='', gesture=null;
+    let zoom=1, selected=null, active=null, before='', gesture=null, composing=false, settling=false, pendingBlur=false, compositionEpoch=0;
+    document.addEventListener('compositionstart',e=>{if(e.target===active){composing=true;compositionEpoch++;}});
+    document.addEventListener('compositionend',e=>{if(e.target!==active)return;composing=false;settling=true;const epoch=compositionEpoch;setTimeout(()=>{if(epoch!==compositionEpoch)return;settling=false;if(pendingBlur)finishText();},0);});
     // Paint micro-adjustments immediately; parent acknowledgements can arrive
     // after newer keys or after the next pointer gesture has already started.
     const pendingPlacements=[];
@@ -38,7 +40,7 @@ export function slideBridge(channel: string, pageId: string) {
     function commitPlacement(node,p){const id=node.getAttribute('data-doc-object');pendingPlacements.push({id,x:Math.round(p.x*10)/10,y:Math.round(p.y*10)/10,scale:Math.round(p.scale*1000)/1000});if(pendingPlacements.length>256)pendingPlacements.shift();send('placement',{id,placement:p});}
     const box=document.createElement('div');
     box.style.cssText='all:initial;position:fixed;pointer-events:none;box-sizing:border-box;border:2px solid #257563;z-index:2147483647;display:none';
-    const handle=document.createElement('button');handle.type='button';handle.textContent='↘';handle.title='等比缩放选中对象';
+    const handle=document.createElement('button');handle.type='button';handle.textContent='↘';handle.title='等比缩放：拖动或方向键，Shift 加快';handle.setAttribute('aria-label','等比缩放：拖动或方向键，Shift 加快');
     handle.style.cssText='all:initial;position:absolute;right:-8px;bottom:-8px;background:#fff;color:#246858;border:2px solid #246858;border-radius:3px;width:14px;height:14px;cursor:nwse-resize;pointer-events:auto;text-align:center;font:12px sans-serif';
     box.append(handle);document.documentElement.append(box);
     function placement(node){
@@ -52,7 +54,9 @@ export function slideBridge(channel: string, pageId: string) {
     function outline(){
       if(!selected){box.style.display='none';return;}
       const r=selected.getBoundingClientRect();Object.assign(box.style,{display:'block',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
-      handle.style.display=placement(selected).editable?'block':'none';
+      const p=placement(selected);handle.style.display=p.editable?'block':'none';
+      const label='等比缩放 '+Number((p.scale*100).toFixed(1))+'%：拖动或方向键，Shift 加快';
+      handle.title=label;handle.setAttribute('aria-label',label);
     }
     function select(node){selected=node;outline();if(node){
       const s=getComputedStyle(node),p=placement(node),r=node.getBoundingClientRect(),pr=page.getBoundingClientRect();
@@ -65,11 +69,11 @@ export function slideBridge(channel: string, pageId: string) {
         ...(node.tagName==='IMG'?{imageSize:{width:parseFloat(s.width),height:parseFloat(s.height)}}:{})});}else send('object-clear');}
     document.addEventListener('load',e=>{if(e.target===selected&&selected?.tagName==='IMG')select(selected);},true);
     function fit(){endGesture(true);zoom=Math.min((innerWidth-40)/w,(innerHeight-40)/h,1);zoom=Math.max(.05,zoom);page.style.setProperty('left',Math.max(20,(innerWidth-w*zoom)/2)+'px','important');page.style.setProperty('top',Math.max(20,(innerHeight-h*zoom)/2)+'px','important');page.style.setProperty('transform','scale('+zoom+')','important');outline();}
-    function finishText(){if(!active)return;const node=active;active=null;node.removeAttribute('contenteditable');if(node.textContent!==before)send('edit',{id:node.getAttribute('data-doc-text'),text:node.textContent});outline();send('ended');}
+    function finishText(){if(!active)return;if(composing||settling){pendingBlur=true;return;}pendingBlur=false;const node=active;active=null;node.removeAttribute('contenteditable');if(node.textContent!==before)send('edit',{id:node.getAttribute('data-doc-text'),text:node.textContent});outline();send('ended');}
     document.addEventListener('input',()=>{if(active)outline();});
     const object=e=>e.target instanceof Element?e.target.closest('[data-doc-object]'):null;
     document.addEventListener('click',e=>{if(e.target instanceof Element&&e.target.closest('a'))e.preventDefault();if(e.target===handle||active)return;const node=object(e);if(node)select(node);else select(null);});
-    document.addEventListener('dblclick',e=>{const node=e.target instanceof Element?e.target.closest('[data-doc-text]'):null;if(!node||!page.contains(node))return;finishText();active=node;before=node.textContent;node.setAttribute('contenteditable','plaintext-only');node.focus();send('editing');});
+    document.addEventListener('dblclick',e=>{const node=e.target instanceof Element?e.target.closest('[data-doc-text]'):null;if(!node||!page.contains(node)||composing||settling)return;finishText();active=node;before=node.textContent;node.setAttribute('contenteditable','plaintext-only');node.focus();send('editing');});
     document.addEventListener('focusout',e=>{if(e.target===active)finishText();});
     document.addEventListener('beforeinput',e=>{
       if(!active||!['insertParagraph','insertLineBreak'].includes(e.inputType))return;e.preventDefault();
@@ -99,7 +103,7 @@ export function slideBridge(channel: string, pageId: string) {
     document.addEventListener('pointerup',e=>{if(e.pointerId===gesture?.pointerId)endGesture(false);});document.addEventListener('pointercancel',e=>{if(e.pointerId===gesture?.pointerId)endGesture(true);});
     document.addEventListener('lostpointercapture',e=>{if(e.pointerId===gesture?.pointerId)endGesture(true);});
     document.addEventListener('keydown',e=>{
-      if(composingKey(e))return;
+      if(composing||settling||composingKey(e))return;
       if(active){if(e.key==='Escape'){active.textContent=before;active.blur();}if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();active.blur();}return;}
       if(e.key==='Escape'){endGesture(true);select(null);return;}
       if(gesture)return;
@@ -108,8 +112,13 @@ export function slideBridge(channel: string, pageId: string) {
       if(e.metaKey||e.ctrlKey||e.altKey)return;
       if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
       e.preventDefault();const p=placement(node);if(!p.editable){send('layout-locked');return;}const n=e.shiftKey?10:1;
-      const next={x:Math.min(10000,Math.max(-10000,p.x+(e.key==='ArrowRight'?n:e.key==='ArrowLeft'?-n:0))),y:Math.min(10000,Math.max(-10000,p.y+(e.key==='ArrowDown'?n:e.key==='ArrowUp'?-n:0))),scale:p.scale};
-      if(next.x===p.x&&next.y===p.y)return;
+      let next={x:Math.min(10000,Math.max(-10000,p.x+(e.key==='ArrowRight'?n:e.key==='ArrowLeft'?-n:0))),y:Math.min(10000,Math.max(-10000,p.y+(e.key==='ArrowDown'?n:e.key==='ArrowUp'?-n:0))),scale:p.scale};
+      if(e.target===handle){
+        const rect=node.getBoundingClientRect(),origin=getComputedStyle(node).transformOrigin.split(/\\s+/).map(parseFloat);
+        if(rect.width<=0||rect.height<=0)return;
+        next=gesturePlacement({...p,width:rect.width/zoom,height:rect.height/zoom,originX:origin[0]||0,originY:origin[1]||0},e.key==='ArrowRight'?n:e.key==='ArrowLeft'?-n:0,e.key==='ArrowDown'?n:e.key==='ArrowUp'?-n:0,true);
+      }
+      if(next.x===p.x&&next.y===p.y&&next.scale===p.scale)return;
       paint(node,next);commitPlacement(node,next);
     });
     document.addEventListener('submit',e=>e.preventDefault());document.addEventListener('dragstart',e=>e.preventDefault());
@@ -124,7 +133,7 @@ export function slideBridge(channel: string, pageId: string) {
       else if(gesture?.node===node)endGesture(true);
       paint(node,p);if(ack<0||selected===node)select(node);
     });
-    window.addEventListener('message',e=>{if(e.source!==parent||e.data?.channel!==channel)return;if(e.data.type==='request-ready')send('slide-ready',{width:w,height:h});if(e.data.type==='flush'){finishText();endGesture(false);send('flushed');}if(e.data.type==='select-object')select([...page.querySelectorAll('[data-doc-object]')].find(n=>n.getAttribute('data-doc-object')===e.data.id)||null);});
+    window.addEventListener('message',e=>{if(e.source!==parent||e.data?.channel!==channel)return;if(e.data.type==='request-ready')send('slide-ready',{width:w,height:h});if(e.data.type==='flush'){if(composing||settling){send('flush-blocked');return;}finishText();endGesture(false);send('flushed');}if(e.data.type==='select-object')select([...page.querySelectorAll('[data-doc-object]')].find(n=>n.getAttribute('data-doc-object')===e.data.id)||null);});
     window.addEventListener('blur',()=>endGesture(true));
     window.addEventListener('resize',fit);fit();send('slide-ready',{width:w,height:h});
   })();`;

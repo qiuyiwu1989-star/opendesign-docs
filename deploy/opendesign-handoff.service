@@ -1,0 +1,32 @@
+[Unit]
+Description=OpenDesign developer MCP and temporary HTML handoff
+After=network.target
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/opt/opendesign-handoff/current
+ExecStart=/usr/bin/node --max-old-space-size=384 /opt/opendesign-handoff/current/services/handoff/server.mjs
+Environment=NODE_ENV=production
+Environment=HANDOFF_PORT=5192
+Environment=HANDOFF_BIND=127.0.0.1
+Environment=HANDOFF_PUBLIC_URL=https://doc.opendesign.cc/connect/
+Environment=HANDOFF_DOCS_URL=https://doc.opendesign.cc/
+Environment=HANDOFF_TRUST_LOOPBACK_PROXY=1
+Restart=on-failure
+RestartSec=5
+MemoryMax=512M
+MemorySwapMax=0
+CPUQuota=50%
+TasksMax=32
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077
+[Install]
+WantedBy=multi-user.target

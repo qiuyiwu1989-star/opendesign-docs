@@ -1,0 +1,19 @@
+[Unit]
+Description=OpenDesign Docs Studio private PostgreSQL and session-key backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/bin/python3 /opt/opendesign-docs-studio/ops/studio-backup.py --retention-days 14
+TimeoutStartSec=15min
+UMask=0077
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/backups/opendesign-docs/studio-daily
+ReadOnlyPaths=/var/lib/opendesign-docs-studio
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true

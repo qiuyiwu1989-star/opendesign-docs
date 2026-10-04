@@ -22,3 +22,6 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run build:domain
+      - run: npm run build:handoff
+      - run: npm run build:studio-agent
+      - run: python3 -m unittest discover -s deploy/tests -p 'test_studio_backup.py' -v

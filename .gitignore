@@ -10,3 +10,18 @@ private-samples/
 recordings/
 downloads/
 .npmrc
+
+# Rebuilt by build:sdk; served with each static release.
+public/sdk/
+
+dist-handoff/
+
+# Local Agent job state may contain private document candidates.
+.local/
+
+# Standalone Studio service bundle.
+dist-studio-agent/
+
+# Python backup-tool test artifacts.
+__pycache__/
+*.pyc

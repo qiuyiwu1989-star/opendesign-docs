@@ -4,11 +4,11 @@
 
 A local-first visual HTML editor. Keep the original design, refine the content, review versions and export your work. No Agent service or model API key required.
 
-**Alpha — 本机编辑版。** Cloud sharing, verified collaboration and voice annotations are not available yet. This repository is independent of OpenDesign Library and Agent Studio.
+**Alpha — 本地优先编辑与免费 Studio 试用。** Optional Studio cloud copies and AI text edits are live at https://doc.opendesign.cc/ (2026-09-29). Cloud access uses a 30-day anonymous browser identity; cross-device accounts, sharing and collaboration are not available yet. Ordinary document editing stays local. See the [release receipt](docs/releases/20260929T052906Z-handoff.md).
 
 ## Quick start
 
-Node.js 22.12+ and npm:
+Node.js 24+ and npm:
 
 ```sh
 git clone https://github.com/qiuyiwu1989-star/opendesign-docs.git
@@ -18,6 +18,12 @@ npm run dev
 ```
 
 Open http://127.0.0.1:5175/docs/ and choose **演示页示例** or import a trusted HTML file. If that port is occupied, use `npm run dev -- --port 5180` and open the corresponding address. Browser storage is isolated by origin; changing the port does not migrate your documents.
+
+整体产品方向与阶段规划：[OpenDesign 产品路径](docs/PRODUCT-STRATEGY.md)。
+
+## Website and MCP integration
+
+[接入指南](docs/OPEN-INTEGRATION.md) covers the browser SDK, runnable `/integrate/` example and an optional temporary MCP handoff service. The Docs receiver, browser SDK and integration example are live at https://doc.opendesign.cc/ (2026-09-18); the independent MCP service is live at https://doc.opendesign.cc/connect/mcp. The free developer portal includes SDK, REST/OpenAPI and AI integration instructions. The editor remains local-first; the handoff service is an independent opt-in process.
 
 ## What works
 
@@ -77,3 +83,5 @@ Start with the confirmed [project memory](docs/PROJECT-MEMORY.md). See the [road
 ## License and provenance
 
 Source code continues under the upstream **MIT License**, with original attribution preserved. See [LICENSE](LICENSE) and [NOTICE](NOTICE). The project name and logo do not grant trademark rights. Imported user documents retain their own rights and are not licensed by this repository.
+
+Studio standalone service and model worker: [runbook](docs/STUDIO-SERVICE-RUNBOOK.md).

@@ -1,0 +1,29 @@
+# Node 24 required. Loopback only; not a public ingress configuration.
+[Unit]
+Description=OpenDesign Studio local task service and model worker
+After=network.target
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/opt/opendesign-studio/current
+ExecStart=/usr/bin/node --max-old-space-size=384 /opt/opendesign-studio/current/server.mjs
+Environment=NODE_ENV=production
+Environment=STUDIO_AGENT_PORT=5198
+Environment=STUDIO_AGENT_STATE_DIR=/var/lib/opendesign-studio
+EnvironmentFile=/etc/opendesign-studio.env
+StateDirectory=opendesign-studio
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+KillMode=control-group
+MemoryMax=512M
+TasksMax=32
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+UMask=0077
+[Install]
+WantedBy=multi-user.target

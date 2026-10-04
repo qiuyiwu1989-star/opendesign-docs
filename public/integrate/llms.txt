@@ -1,0 +1,20 @@
+# OpenDesign Developers
+
+Free public pilot. Create temporary HTML handoffs for user-confirmed editing in OpenDesign Docs.
+MCP: https://doc.opendesign.cc/connect/mcp (Streamable HTTP, no authentication)
+Tool: opendesign_create_document_handoff
+Input: {"name":"report.html","html":"<!doctype html><h1>Report</h1>"}
+Output: {"status":"ready","open_url":"...","expires_at":"..."}
+Return open_url to the user. Ready is NOT imported. User must open the link and confirm in Docs.
+Only upload HTML the user authorized sending to OpenDesign. Anyone holding the link can read it.
+HTML is kept in temporary memory for 15 minutes, removed after successful import, and lost on restart.
+No URL fetching, model execution, cloud document synchronization, account system or billing.
+Limits: 5 MiB UTF-8/document; 30 POST requests/IP/minute; 100 documents and 60 MiB per service.
+HTTP 429: rate limited. 503: temporary capacity/concurrency full. Invalid/expired link: 404.
+MCP tool-level errors use isError. Do not blindly retry timeouts or claim a document was saved.
+Website SDK: https://doc.opendesign.cc/sdk/opendesign.js
+ESM: https://doc.opendesign.cc/sdk/opendesign.mjs
+Browser websites should use OpenDesign.open({name,html},{docsUrl:'https://doc.opendesign.cc/'}) within a user click.
+Only result.ok === true means user confirmation and local save succeeded.
+REST spec: https://doc.opendesign.cc/integrate/openapi.json
+Guide and interactive example: https://doc.opendesign.cc/integrate/

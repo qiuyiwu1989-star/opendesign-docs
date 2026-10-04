@@ -626,3 +626,33 @@ input {
   }
 }
 :root .feature-message { padding: 12px 16px; display: flex; align-items: center; gap: 12px; color: #63736e; font-size: 13px; }
+
+/* Persistent developer entry opens separately, preserving unsaved editor work. */
+.docs-mcp-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.docs-mcp-entry:hover { background: var(--surface); }
+.docs-mcp-entry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.local-note .docs-mcp-entry { display: flex; width: fit-content; margin-bottom: 12px; }
+
+.document-outline ol { list-style:none; padding:0; margin:12px 0; }
+.document-outline li { margin:3px 0; }
+.document-outline button { width:100%; text-align:start; white-space:normal; overflow-wrap:anywhere; padding:8px 10px; background:transparent; border:1px solid transparent; line-height:1.5; }
+.document-outline button:hover:not(:disabled), .document-outline button:focus-visible { border-color:var(--accent, #267565); background:rgba(38,117,101,.08); }
+
+.scenario-library { border-block: 1px solid #e0e6e1; padding: 12px 0; margin: 4px 0; }
+.scenario-library summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.scenario-library p { font-size: 12px; line-height: 1.6; color: #64766d; margin: 10px 0; }
+.scenario-library button { display: block; width: 100%; text-align: left; margin-top: 8px; font-size: 12px; }
+.library .studio-launch{display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:13px 14px;background:#e9f0e7;border:1px solid #b8c9b5;color:#294e39;text-align:left}.library .studio-launch span{font-weight:600}.library .studio-launch small{font-size:11px;color:#61755f}.library .studio-launch:hover{background:#dfe9dc}
+.docs-copy-label{font-size:11px;color:var(--muted);white-space:nowrap;padding:3px 7px;border:1px solid var(--line);border-radius:4px}

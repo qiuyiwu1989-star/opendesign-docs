@@ -10,6 +10,8 @@ import {
 } from "./slides";
 import { saveDocument, type DocumentRecord } from "./store";
 import "./slides.css";
+import "./slides-workspace.css";
+import { fitSlideViewport, focusSlideObject, panSlideViewport, type ViewportCamera } from "./slide-viewport";
 import { ResourcePanel } from "./ResourcePanel";
 import { ExportControl } from "./ExportControl";
 import { htmlExportBlob } from "./html-export";
@@ -59,6 +61,8 @@ export function SlidesEditor({
   draft: DraftControls;
   initialSource: string;
 }) {
+  const [pagesOpen, setPagesOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const initial = initialSource;
   const [source, setSource] = useState(initial),
     [renderSource, setRenderSource] = useState(initial);
@@ -144,20 +148,24 @@ export function SlidesEditor({
     timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined),
     busy = useRef(false);
   const viewport = useRef<HTMLDivElement>(null);
-  const [canvasScale, setCanvasScale] = useState(1);
+  const [viewportSize, setViewportSize] = useState({ width: 1280, height: 720 });
+  const [camera, setCamera] = useState<ViewportCamera | null>(null);
+  const [handTool, setHandTool] = useState(false);
+  const [spacePan, setSpacePan] = useState(false);
+  const panStart = useRef<null | { x: number; y: number; camera: ViewportCamera }>(null);
+  const activeCamera = camera ?? fitSlideViewport(viewportSize);
+  const canvasScale = activeCamera.scale;
   useEffect(() => {
     const el = viewport.current;
     if (!el) return;
-    const observer = new ResizeObserver(() =>
-      setCanvasScale(
-        Math.max(
-          0.05,
-          Math.min(el.clientWidth / 1280, el.clientHeight / 720, 1),
-        ),
-      ),
-    );
+    const observer = new ResizeObserver(() => setViewportSize({ width: el.clientWidth, height: el.clientHeight }));
     observer.observe(el);
     return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const endPan = () => { setSpacePan(false); panStart.current = null; };
+    window.addEventListener("blur", endPan);
+    return () => window.removeEventListener("blur", endPan);
   }, []);
   const pages = useMemo(() => inspectSlides(source), [source]),
     page = pages[Math.min(pageIndex, Math.max(0, pages.length - 1))];
@@ -231,6 +239,7 @@ export function SlidesEditor({
       "*",
     );
   const applyLayout = (id: string, placement: Placement) => {
+    selectedGeometry.current = undefined;
     setPosition(placement);
     appliedPosition.current = placement;
     frame.current?.contentWindow?.postMessage(
@@ -338,6 +347,11 @@ export function SlidesEditor({
           commit(patchText(sourceRef.current, text, d.text), false);
           setDirect(false);
         }
+        if (d.type === "flush-blocked") {
+          clearTimeout(timer.current);
+          flushRef.current = null;
+          setError("请先确认或取消输入法候选文字，再保存、导出或切页。");
+        }
         if (d.type === "flushed" && flushRef.current) {
           clearTimeout(timer.current);
           const done = flushRef.current;
@@ -359,14 +373,17 @@ export function SlidesEditor({
   });
   const flush = (action: () => void) => {
     if (styleDraftRef.current) {
+      setInspectorOpen(true);
       setError("请先应用或取消文字样式。");
       return;
     }
     if (textDraftRef.current) {
+      setInspectorOpen(true);
       setError("文字尚未应用，请先应用文字或取消改字，再保存、导出或切页。");
       return;
     }
     if (positionDraft) {
+      setInspectorOpen(true);
       setError("位置数值尚未应用，请先应用或取消调整，再保存、导出或切页。");
       return;
     }
@@ -452,6 +469,9 @@ export function SlidesEditor({
       setReady(false);
     setRenderSource(sourceRef.current);
     setPageIndex(index);
+    setCamera(null);
+    setHandTool(false);
+    setSpacePan(false);
     resetSelection();
   };
   const alignObject = (alignment: Alignment) => {
@@ -763,7 +783,15 @@ export function SlidesEditor({
             </button>
           </div>
         </header>
-        <div className="context-bar">
+        <div className="context-bar slide-context-bar">
+          <button
+            aria-expanded={pagesOpen}
+            aria-controls="slide-page-navigation"
+            onClick={() => setPagesOpen((open) => !open)}
+            title={pagesOpen ? "收起页面导航" : "展开页面导航"}
+          >
+            页面导航
+          </button>
           <details className="slide-page-menu">
             <summary aria-label="页面操作">演示页 ▾</summary>
             <div
@@ -807,9 +835,28 @@ export function SlidesEditor({
               {pageActions?.reason && <p>{pageActions.reason}</p>}
             </div>
           </details>
-          <span>
-            {size} · 第 {pageIndex + 1} / {pages.length} 页
+          <span className="slide-page-status">
+            第 {pageIndex + 1} / {pages.length} 页
           </span>
+          <div className="slide-view-tools" role="group" aria-label="画布视图">
+            <button aria-pressed={camera === null} onClick={() => setCamera(null)} title={`画布 ${size}，适应可用空间`}>适应</button>
+            <button aria-pressed={camera?.scale === 1} onClick={() => setCamera({ scale: 1, x: 0, y: 0 })}>100%</button>
+            <button disabled={!target || !selectedGeometry.current || direct || !ready || positionDraft || textDraft || styleDraft}
+              title="将选中对象居中显示，不改变对象位置"
+              onClick={() => { if (selectedGeometry.current) setCamera(focusSlideObject(viewportSize, selectedGeometry.current)); }}>聚焦选中</button>
+            <button aria-pressed={handTool} disabled={direct || saving || positionDraft || textDraft || styleDraft}
+              onClick={() => { setHandTool((active) => !active); viewport.current?.focus(); }}
+              title="拖动画布视图；也可先聚焦画布外框，再按住空格拖动">抓手</button>
+            <span className="slide-fit-status">{Math.round(canvasScale * 100)}%</span>
+          </div>
+          <button
+            aria-expanded={inspectorOpen}
+            aria-controls="slide-format-inspector"
+            onClick={() => setInspectorOpen((open) => !open)}
+            title={inspectorOpen ? "收起格式侧栏" : "展开格式侧栏"}
+          >
+            格式{positionDraft || textDraft || styleDraft ? " · 未应用" : ""}
+          </button>
         </div>
         {error && (
           <div role="alert" className="error">
@@ -817,7 +864,8 @@ export function SlidesEditor({
             <button onClick={() => setError("")}>关闭</button>
           </div>
         )}
-        <div className="slide-workspace">
+        <div className={`slide-workspace slide-adaptive-workspace${pagesOpen ? "" : " pages-collapsed"}${inspectorOpen ? "" : " inspector-collapsed"}`}>
+          <div id="slide-page-navigation" className="slide-navigation-panel" hidden={!pagesOpen}>
           <SlideThumbnails
             source={source}
             pages={pages}
@@ -827,18 +875,28 @@ export function SlidesEditor({
             }
             onSelect={(id) => flush(() => changePage(id))}
           />
-          <div className="slide-canvas-viewport" ref={viewport}>
+          </div>
+          <div className="slide-canvas-viewport" ref={viewport} tabIndex={0}
+            role="region" aria-label="画布视口" aria-describedby="slide-pan-help"
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget || composingKey(event.nativeEvent) || direct || saving || positionDraft || textDraft || styleDraft) return;
+              if (event.code === "Space" && !event.altKey && !event.ctrlKey && !event.metaKey) { event.preventDefault(); setSpacePan(true); }
+              if (event.key === "Escape") { setHandTool(false); setSpacePan(false); }
+            }}
+            onKeyUp={(event) => { if (event.code === "Space") { setSpacePan(false); panStart.current = null; } }}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setSpacePan(false); panStart.current = null; } }}>
+            <span id="slide-pan-help" className="slide-pan-help">{handTool || spacePan ? "拖动平移视图 · Esc 返回选择" : camera ? "抓手可平移视图；适应可回到整页" : "画布外框聚焦后，可按住空格拖动"}</span>
             <iframe
               className="slide-frame"
               style={{
-                transform: `translate(-50%, -50%) scale(${canvasScale})`,
+                transform: `translate(calc(-50% + ${activeCamera.x}px), calc(-50% + ${activeCamera.y}px)) scale(${canvasScale})`,
                 pointerEvents:
                   positionDraft || textDraft || styleDraft || saving
                     ? "none"
                     : undefined,
               }}
               inert={
-                positionDraft || textDraft || styleDraft || saving || undefined
+                positionDraft || textDraft || styleDraft || saving || handTool || spacePan || undefined
               }
               ref={frame}
               title="HTML 演示画布"
@@ -848,8 +906,24 @@ export function SlidesEditor({
               referrerPolicy="no-referrer"
               allow="camera 'none'; microphone 'none'; geolocation 'none'"
             />
+            {(handTool || spacePan) && !direct && !saving && !positionDraft && !textDraft && !styleDraft && <div className="slide-pan-surface" aria-hidden="true"
+              onPointerDown={(event) => {
+                if (event.button !== 0) return;
+                event.preventDefault();
+                viewport.current?.focus();
+                event.currentTarget.setPointerCapture(event.pointerId);
+                panStart.current = { x: event.clientX, y: event.clientY, camera: activeCamera };
+              }}
+              onPointerMove={(event) => { const start = panStart.current; if (start) setCamera(panSlideViewport(start.camera, viewportSize, { x: event.clientX - start.x, y: event.clientY - start.y })); }}
+              onPointerUp={() => { panStart.current = null; }}
+              onPointerCancel={() => { panStart.current = null; }}
+              onLostPointerCapture={() => { panStart.current = null; }} />}
           </div>
-          <aside className="slide-inspector">
+          <aside id="slide-format-inspector" className="slide-inspector" aria-label="格式与对象" hidden={!inspectorOpen}>
+            <div className="slide-inspector-heading">
+              <strong>{target ? (target.tag === "img" ? "图片格式" : "对象格式") : "格式"}</strong>
+              <small>{positionDraft || textDraft || styleDraft ? "有未应用的修改" : target ? "选中对象" : "尚未选择对象"}</small>
+            </div>
             {target && capabilities && (
               <div
                 className="object-actions"
@@ -1209,8 +1283,7 @@ export function SlidesEditor({
             )}
             {!target && (
               <div className="slide-selection-empty">
-                <strong>格式</strong>
-                <p>选择画布中的对象</p>
+                <p>单击画布中的文字、图片或容器，在这里调整内容与样式。</p>
               </div>
             )}
             <details className="slide-object-list">

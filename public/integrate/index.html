@@ -1,0 +1,38 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenDesign 开发者平台 · MCP / REST / SDK</title>
+<style>body{margin:40px auto;padding:0 24px;max-width:850px;font:16px/1.7 system-ui;background:#f5f6f3;color:#182821}h1{font-size:36px;line-height:1.2}textarea,input,button{font:inherit;box-sizing:border-box}textarea{width:100%;min-height:180px;padding:16px;border:1px solid #adb9af;border-radius:10px}input{padding:8px;max-width:100%}button{background:#175747;color:white;padding:12px 20px;border:0;border-radius:8px;cursor:pointer}button:disabled{opacity:.5}pre{padding:20px;background:#e8ede7;overflow:auto;border-radius:10px}section{margin:42px 0}small{color:#5d6b61}a{color:#175747}</style>
+<small>OPENDESIGN DEVELOPERS · 免费公开试运行</small><h1>让生成好的 HTML，<br>继续被编辑和交付。</h1>
+<p>网站通过一个按钮打开 Docs；AI 工具通过 MCP 创建临时交接链接。基础编辑免费，文档保存在用户浏览器。</p>
+<section><h2>试一次网站接入</h2><p>点击后，新标签页会显示来源与导入确认。下面的 HTML 只在用户确认后保存在 Docs。</p>
+<label>文件名 <input id="name" value="网站接入示例.html"></label>
+<p><label for="html">HTML 源码</label><textarea id="html" spellcheck="false"><!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>我的文档</title><style>body{font:20px/1.8 system-ui;max-width:720px;margin:60px auto;color:#184a3a}h1{font-size:40px}</style><h1>从生成到交付</h1><p>这是一份可以在 OpenDesign Docs 中继续编辑的 HTML 文档。</p></html></textarea></p>
+<button id="open">在 Docs 中编辑</button><p id="status" role="status"></p></section>
+<section><h2>网站：浏览器 SDK</h2><pre><code>&lt;script src="https://doc.opendesign.cc/sdk/opendesign.js"&gt;&lt;/script&gt;
+&lt;button id="edit"&gt;在 Docs 中编辑&lt;/button&gt;
+&lt;script&gt;
+// HTML 提前准备；直接在点击回调中调用，保留浏览器弹窗授权。
+edit.onclick = async () =&gt; {
+  const result = await OpenDesign.open(
+    { name: '报告.html', html: preparedHtml },
+    { docsUrl: 'https://doc.opendesign.cc/' }
+  );
+  // result.ok === true 才表示用户已确认且本地保存成功。
+};
+&lt;/script&gt;</code></pre><p>也提供 <a href="../sdk/opendesign.mjs">ES module</a>。来源页必须使用 HTTP(S)，并允许保留跨窗口 opener；被浏览器拦截时提供下载 HTML 的备用入口。</p></section>
+<section id="mcp"><h2>AI 工具：MCP</h2><p>在支持远程 Streamable HTTP 的客户端中连接 <code>https://doc.opendesign.cc/connect/mcp</code>，调用 <code>opendesign_create_document_handoff</code>：</p>
+<pre><code>{ "name": "报告.html", "html": "&lt;h1&gt;报告&lt;/h1&gt;" }</code></pre>
+<p>工具返回 <code>open_url</code> 和 <code>expires_at</code>。用户点击链接，再确认导入 Docs。服务已公开，无需 API Key。<code>ready</code> 表示链接准备就绪，用户确认后才算导入成功。</p></section>
+<section><h2>服务端：REST API</h2><p>提交 HTML 源码，获取临时交接链接。浏览器网站使用上面的 SDK；REST 面向服务端，跨站浏览器请求不会被接受。</p>
+<pre><code>curl https://doc.opendesign.cc/connect/api/handoffs \
+  -H 'Content-Type: application/json' \
+  --data '{"name":"hello.html","html":"&lt;!doctype html&gt;&lt;h1&gt;Hello OpenDesign&lt;/h1&gt;"}'</code></pre>
+<p>成功返回 HTTP 201，包含 <code>status</code>、<code>open_url</code>、<code>expires_at</code>。展示返回的链接，由用户打开；不要将临时链接放入公开日志。</p>
+<h3>通用连接参数</h3><pre><code>{
+  "url": "https://doc.opendesign.cc/connect/mcp",
+  "transport": "Streamable HTTP",
+  "authentication": "none"
+}</code></pre><p>以上是连接参数说明，各 AI 客户端配置格式有所不同。已验证 initialize、tools/list、tools/call；不支持旧 SSE 或后台长期订阅。</p>
+<p><a href="./openapi.json">REST OpenAPI 规范</a> · <a href="./llms.txt">AI 接入说明</a> · <a href="../connect/healthz">服务健康状态</a></p></section>
+<section><h2>免费试运行额度</h2><p>每个来源 IP 每分钟 30 次 POST（包括 MCP 初始化、工具调用和读取）；全服务最多同时保存 100 份 / 60 MiB 内容。429 表示请求过多，503 表示容量或并发已满。超时后请先检查是否已导入，避免重复创建。</p></section>
+<section><h2>接入范围</h2><ul><li>每份 HTML 最多 5 MiB；推荐内联样式和图片、静态 SVG。</li><li>不自动抓取第三方网址，不执行导入 HTML 的脚本。动态应用及外部资源不能保证原样显示。</li><li>MCP 临时内容保留 15 分钟，导入成功后清除；持有链接的人可读取，服务重启会提前失效。</li><li>免费版先验证编辑与交付。团队协作、长期云存储、更高额度可作为后续高级功能，暂未开放。</li></ul></section>
+<script src="../sdk/opendesign.js"></script><script src="./demo.js"></script></html>

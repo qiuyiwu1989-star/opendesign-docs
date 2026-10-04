@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>Docs handoff QA</title>
+<style>body{font:16px system-ui;max-width:780px;margin:50px auto}button,input{font:inherit;padding:10px;margin:5px}pre{white-space:pre-wrap}</style>
+<h1>DeepBrain → Docs 本地交接</h1>
+<p>合成样例，十张静态 SVG 图表。来源和 Docs 使用不同端口。</p>
+<label>Docs 地址 <input id="destination" value="http://127.0.0.1:5191/#handoff=v1" size="40"></label>
+<button id="open" disabled>在 OpenDesign 中编辑</button><button id="again" disabled>向已打开窗口再次交接（脏状态验收）</button>
+<button id="download" disabled>下载样例</button><pre id="status">准备报告…</pre>
+<script>
+let report, child, timer;
+const status=document.querySelector('#status'), openButton=document.querySelector('#open'), again=document.querySelector('#again');
+fetch('/docs/incoming/deepbrain-sample-report-9charts.html').then(r=>{if(!r.ok)throw Error(r.status);return r.text()}).then(s=>{report=s;openButton.disabled=false;document.querySelector('#download').disabled=false;status.textContent='样例已准备';}).catch(e=>status.textContent=String(e));
+window.addEventListener('message',e=>{
+ const origin=new URL(document.querySelector('#destination').value).origin;
+ if(e.source!==child||e.origin!==origin||e.data?.v!==1)return;
+ if(e.data.type==='opendesign:handoff-ready'){
+  clearTimeout(timer);status.textContent='已连接，等待 Docs 导入确认';
+  child.postMessage({type:'opendesign:handoff',v:1,nonce:e.data.nonce,document:{name:'深脑-合成报告.html',html:report,generator:'DeepBrain'}},origin);
+ }else if(e.data.type==='opendesign:handoff-result'){clearTimeout(timer);status.textContent=JSON.stringify(e.data,null,2);}
+});
+openButton.onclick=()=>{
+ child=window.open(document.querySelector('#destination').value,'_blank');
+ if(!child){status.textContent='窗口被拦截，请下载 HTML 手动导入';return;}
+ again.disabled=false;status.textContent='等待 Docs 连接…';
+ timer=setTimeout(()=>status.textContent='未收到连接或结果，请检查 Docs 标签页；不要重复导入',20000);
+};
+again.onclick=()=>{if(child&&!child.closed)child.location=document.querySelector('#destination').value;};
+document.querySelector('#download').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([report],{type:'text/html'}));a.download='deepbrain-sample-report.html';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
+</script>

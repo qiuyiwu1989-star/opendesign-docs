@@ -15,7 +15,7 @@ function png(width = 2, height = 3) {
 }
 const file = (bytes: Uint8Array, type = "image/png") =>
   new File([bytes as Uint8Array<ArrayBuffer>], "local.png", { type });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 describe("spec 016 local bitmap import", () => {
   it("checks magic and dimensions, decodes and embeds without network", async () => {
     const close = vi.fn();
@@ -97,5 +97,38 @@ describe("spec 016 local bitmap import", () => {
     await expect(prepareLocalImage(file(webp, "image/webp"))).rejects.toThrow(
       "静态",
     );
+  });
+});
+
+describe("image decoder timeout", () => {
+  it("rejects stalled bitmap decoding and closes a late bitmap", async () => {
+    vi.useFakeTimers();
+    let finish!: (value: unknown) => void;
+    const close = vi.fn();
+    vi.stubGlobal("createImageBitmap", vi.fn(() => new Promise(resolve => { finish = resolve; })));
+    const result = prepareLocalImage(file(png()));
+    const rejected = expect(result).rejects.toThrow("超时");
+    await vi.advanceTimersByTimeAsync(15000);
+    await rejected;
+    finish({ width: 2, height: 3, close });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(close).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("releases fallback URL and detaches handlers on timeout", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("createImageBitmap", undefined);
+    const instance = { onload: null, onerror: null, src: "", removeAttribute: vi.fn() };
+    vi.stubGlobal("Image", class { constructor() { return instance; } });
+    const revoke = vi.fn();
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:test", revokeObjectURL: revoke });
+    const result = prepareLocalImage(file(png()));
+    const rejected = expect(result).rejects.toThrow("超时");
+    await vi.advanceTimersByTimeAsync(15000);
+    await rejected;
+    expect(revoke).toHaveBeenCalledWith("blob:test");
+    expect(instance.onload).toBeNull();
+    expect(instance.onerror).toBeNull();
+    expect(instance.removeAttribute).toHaveBeenCalledWith("src");
   });
 });

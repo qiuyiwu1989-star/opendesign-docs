@@ -1,0 +1,165 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "OpenDesign temporary HTML handoff",
+    "version": "0.1.0",
+    "description": "Free public pilot. No auth. Link possession permits read/delete. 15 minute TTL. Ready is not imported."
+  },
+  "servers": [
+    {
+      "url": "https://doc.opendesign.cc/connect"
+    }
+  ],
+  "paths": {
+    "/api/handoffs": {
+      "post": {
+        "operationId": "createHandoff",
+        "summary": "Create user-confirmed editing link",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "html"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "html": {
+                    "type": "string",
+                    "description": "Complete HTML; maximum 5 MiB UTF-8. Never a URL."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Temporary link ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "open_url",
+                    "expires_at"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "ready"
+                    },
+                    "open_url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "expires_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Foreign Origin"
+          },
+          "413": {
+            "description": "Too large"
+          },
+          "415": {
+            "description": "JSON required"
+          },
+          "429": {
+            "description": "Rate limited"
+          },
+          "503": {
+            "description": "Capacity or concurrency full"
+          }
+        }
+      }
+    },
+    "/api/read": {
+      "post": {
+        "operationId": "readHandoff",
+        "summary": "Read exact temporary source",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "404": {
+            "description": "Expired or unavailable"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/complete": {
+      "post": {
+        "operationId": "completeHandoff",
+        "summary": "Idempotently delete; not proof of import",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "404": {
+            "description": "Expired or unavailable"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    }
+  }
+}

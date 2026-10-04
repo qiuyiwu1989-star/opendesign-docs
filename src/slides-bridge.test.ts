@@ -8,6 +8,7 @@ function harness(activate = false) {
   const events: Record<string, (e: any) => void> = {};
   const windowEvents: Record<string, (e: any) => void> = {};
   const messages: any[] = [];
+  const timers: (() => void)[] = [];
   const created: MockElement[] = [];
   class MockElement {
     classes = new Set<string>();
@@ -122,6 +123,7 @@ function harness(activate = false) {
   };
   new Script(slideBridge("test-channel-123", "page-0")).runInContext(
     createContext({
+      setTimeout: (fn: () => void) => timers.push(fn),
       document,
       parent,
       window,
@@ -157,6 +159,7 @@ function harness(activate = false) {
       preventDefault() {},
     });
   return {
+    timers,
     events,
     windowEvents,
     parent,
@@ -532,4 +535,65 @@ describe("spec 014 trusted slide gesture bridge", () => {
     });
     expect(h.object.style.translate).toBe("12px 24px");
   });
+});
+
+it.each([[false,false],[true,false],[false,true],[true,true]])("blocks candidate commits, including focusout=%s, cancel=%s", (blurFirst, cancel) => {
+ const h=harness(); const original=h.object.textContent; const finalText=cancel?original:"confirmed"; h.events.dblclick!({target:h.object});
+ h.events.compositionstart?.({target:h.object});h.object.textContent="candidate";
+ if(blurFirst) h.events.focusout!({target:h.object});
+ h.windowEvents.message!({source:h.parent,data:{channel:"test-channel-123",type:"flush"}});
+ expect(h.messages.filter(m=>m.type==="edit"||m.type==="flushed")).toEqual([]);
+ expect(h.messages.at(-1).type).toBe("flush-blocked");
+ h.events.compositionend?.({target:h.object});h.object.textContent=finalText;
+ h.events.keydown!({key:"Escape",preventDefault(){}});
+ expect(h.object.textContent).toBe(finalText);
+ h.windowEvents.message!({source:h.parent,data:{channel:"test-channel-123",type:"flush"}});
+ expect(h.messages.filter(m=>m.type==="edit"||m.type==="flushed")).toEqual([]);
+ h.timers.splice(0).forEach(fn=>fn());
+ h.windowEvents.message!({source:h.parent,data:{channel:"test-channel-123",type:"flush"}});
+ expect(h.messages.filter(m=>m.type==="edit").map(m=>m.text)).toEqual(cancel?[]:[finalText]);
+ expect(h.messages.at(-1).type).toBe("flushed");
+});
+
+it("ignores the previous composition timer during a newer final-input window",()=>{
+ const h=harness(); h.events.dblclick!({target:h.object});
+ h.events.compositionstart!({target:h.object}); h.events.focusout!({target:h.object});
+ h.events.compositionend!({target:h.object});
+ h.events.compositionstart!({target:h.object}); h.object.textContent="second candidate";
+ h.events.compositionend!({target:h.object});
+ h.timers.shift()!();
+ h.windowEvents.message!({source:h.parent,data:{channel:"test-channel-123",type:"flush"}});
+ expect(h.messages.filter(m=>m.type==="edit"||m.type==="flushed")).toEqual([]);
+ h.object.textContent="second confirmed"; h.timers.shift()!();
+ expect(h.messages.filter(m=>m.type==="edit").map(m=>m.text)).toEqual(["second confirmed"]);
+});
+
+it("uses arrows on the resize handle to scale instead of moving the object", () => {
+  const h = harness();
+  h.events.click!({ target: h.object });
+  h.events.keydown!({ target: h.handle, key: "ArrowRight", shiftKey: true, preventDefault() {} });
+  const next = h.messages.find(m => m.type === "placement").placement;
+  expect(next.scale).toBeGreaterThan(1);
+  expect(next.x).toBeCloseTo((next.scale - 1) * 100);
+  expect(next.y).toBeCloseTo((next.scale - 1) * 50);
+});
+
+it.each(["ArrowLeft", "ArrowUp"])("shrinks with %s while keeping the opposite corner fixed", key => {
+  const h = harness(); h.events.click!({ target: h.object });
+  h.events.keydown!({ target: h.handle, key, shiftKey: true, preventDefault() {} });
+  const p = h.messages.find(m => m.type === "placement").placement;
+  expect(p.scale).toBeLessThan(1);
+  expect(p.x - (p.scale - 1) * 100).toBeCloseTo(0);
+  expect(p.y - (p.scale - 1) * 50).toBeCloseTo(0);
+});
+it.each([[5,"ArrowRight"],[0.1,"ArrowLeft"]])("does not create an edit beyond scale %s", (scale,key) => {
+  const h=harness(); h.object.style.scale=String(scale);h.events.click!({target:h.object});
+  h.events.keydown!({target:h.handle,key,shiftKey:true,preventDefault(){}});
+  expect(h.messages.filter(m=>m.type==="placement")).toHaveLength(0);
+});
+it("exposes the current scale on the keyboard resize handle",()=>{
+  const h=harness();h.events.click!({target:h.object});
+  expect(h.handle.attributes['aria-label']).toContain('100%');
+  h.events.keydown!({target:h.handle,key:'ArrowRight',shiftKey:true,preventDefault(){}});
+  expect(h.handle.attributes['aria-label']).toContain('104%');
 });

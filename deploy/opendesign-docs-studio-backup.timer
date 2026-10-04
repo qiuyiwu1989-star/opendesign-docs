@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily OpenDesign Docs Studio private backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Singapore
+RandomizedDelaySec=15min
+Persistent=true
+Unit=opendesign-docs-studio-backup.service
+
+[Install]
+WantedBy=timers.target

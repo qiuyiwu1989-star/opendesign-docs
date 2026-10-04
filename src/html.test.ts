@@ -115,3 +115,15 @@ describe("inert preview boundary", () => {
     expect(report.relativeResources).toBe(1);
   });
 });
+
+it("builds a full heading outline with mixed markup without trusting imported metadata", () => {
+  const source = '<h1 data-doc-heading="forged">A <em>B</em><br>C &amp; D</h1><h6>Last</h6><h2> </h2><svg><foreignObject><h2>Excluded</h2></foreignObject></svg>';
+  const report = inspectHtml(source);
+  expect(report.headings.map(h => [h.text, h.level])).toEqual([["A B C & D", 1], ["Last", 6]]);
+  const preview = createPreview(source, "outline-test", false);
+  expect(preview).not.toContain('data-doc-heading="forged"');
+  for (const heading of report.headings) expect(preview).toContain(`data-doc-heading="${heading.id}"`);
+  const edited = patchText(source, report.targets.find(t => t.text === "B")!, "Bold");
+  expect(edited).toBe(source.replace('<em>B</em>', '<em>Bold</em>'));
+  expect(inspectHtml(edited).headings[0]!.text).toBe("A Bold C & D");
+});

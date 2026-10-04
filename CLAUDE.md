@@ -1,5 +1,7 @@
 # OpenDesign Docs
 
+Current continuation (2026-09-18): Docs receiver, SDK and integration page deployed with explicit user authorization as `20260916T160027Z-handoff`. 316 tests and public Safari handoff/edit/save/reload/actual download pass. See docs/incoming/2026-09-18-opendesign-public-ready.md and docs/DEPLOYMENT.md. Source remains uncommitted; independent MCP is now public at https://doc.opendesign.cc/connect/mcp; the actual DeepBrain production button remains a separate gate. See docs/MCP-DEPLOYMENT.md for the later portal/runtime release. The older production statements below are historical.
+
 Start with `docs/PROJECT-MEMORY.md`, the owner-confirmed current handoff. Latest work: Spec035 makes review labels sequential and restores the selected anchor highlight plus matching thread focus. Frequent toolbar actions now use one compact self-authored line-icon language while reading/edit/review remain explicit text modes. Spec034's cached source inspection and performance benchmark remain intact. Source `438f7c3` is pushed and deployed; native pointer and chooser reimport remain open. See specs 032–035, TASKS and acceptance.
 
 ## Goal

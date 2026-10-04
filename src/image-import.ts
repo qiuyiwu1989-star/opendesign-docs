@@ -155,19 +155,26 @@ export async function prepareLocalImage(file: File): Promise<LocalImage> {
   const info = identify(bytes);
   if (info.mime !== file.type) throw new Error("图片格式与内容不一致。");
   let decoded: { width: number; height: number };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let cleanup = () => {};
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("图片读取超时，请更换文件后重试。")), 15000);
+  });
   try {
     if (typeof createImageBitmap === "function") {
-      const bitmap = await createImageBitmap(file);
-      try {
-        decoded = dimensions(bitmap.width, bitmap.height);
-      } finally {
-        bitmap.close();
-      }
+      decoded = await Promise.race([createImageBitmap(file).then((bitmap) => {
+        try {
+          return dimensions(bitmap.width, bitmap.height);
+        } finally {
+          bitmap.close();
+        }
+      }), timeout]);
     } else {
       const url = URL.createObjectURL(file);
       try {
-        decoded = await new Promise((resolve, reject) => {
+        decoded = await Promise.race([new Promise<{ width: number; height: number }>((resolve, reject) => {
           const image = new Image();
+          cleanup = () => { image.onload = null; image.onerror = null; image.removeAttribute("src"); };
           image.onload = () => {
             try {
               resolve(dimensions(image.naturalWidth, image.naturalHeight));
@@ -177,13 +184,17 @@ export async function prepareLocalImage(file: File): Promise<LocalImage> {
           };
           image.onerror = () => reject(new Error("图片无法读取。"));
           image.src = url;
-        });
+        }), timeout]);
       } finally {
+        cleanup();
         URL.revokeObjectURL(url);
       }
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("超时")) throw error;
     throw new Error("图片无法读取，或超过 2000 万像素。");
+  } finally {
+    clearTimeout(timer);
   }
   let binary = "";
   for (let offset = 0; offset < bytes.length; offset += 8192)

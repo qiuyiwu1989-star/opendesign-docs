@@ -3,7 +3,8 @@ import { inspectSlides } from "./slides";
 import { validateLocalImage, type LocalImage } from "./image-import";
 type Node = DefaultTreeAdapterMap["node"];
 type Element = DefaultTreeAdapterMap["element"];
-export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
+import { MAX_DOCUMENT_BYTES } from "./document-limits";
+export { MAX_DOCUMENT_BYTES } from "./document-limits";
 const isElement = (node: Node): node is Element => "tagName" in node;
 const attr = (node: Element, name: string) =>
   node.attrs.find((a) => a.name === name)?.value ?? "";

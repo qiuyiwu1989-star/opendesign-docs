@@ -1,0 +1,24 @@
+[Unit]
+Description=OpenDesign Docs Studio persistent model worker
+After=network.target postgresql.service
+[Service]
+Type=simple
+User=opendesign-docs-studio
+Group=opendesign-docs-studio
+WorkingDirectory=/opt/opendesign-docs-studio/current
+ExecStart=/opt/opendesign-docs-studio/runtime/node-v24.16.0-linux-x64/bin/node --max-old-space-size=256 /opt/opendesign-docs-studio/current/pg-worker.mjs
+EnvironmentFile=/etc/opendesign-docs-studio/worker.env
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+MemoryMax=512M
+TasksMax=48
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+UMask=0077
+[Install]
+WantedBy=multi-user.target

@@ -4,7 +4,7 @@
   "description": "A local-first visual HTML document editor and presentation workspace.",
   "license": "MIT",
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=24.0.0"
   },
   "private": true,
   "type": "module",
@@ -16,19 +16,38 @@
     "typecheck": "tsc --noEmit",
     "lab:gestures": "tsx scripts/build-gesture-lab.ts",
     "benchmark:long": "tsx scripts/measure-long-document.ts",
-    "test": "vitest run",
-    "audit": "tsx scripts/audit.ts"
+    "test": "npm run build:sdk && vitest run --maxWorkers=1",
+    "audit": "tsx scripts/audit.ts",
+    "build:sdk": "tsx scripts/build-sdk.ts",
+    "predev": "npm run build:sdk",
+    "prebuild": "npm run build:sdk",
+    "prebuild:domain": "npm run build:sdk",
+    "handoff": "npm run build:sdk && tsx services/handoff/server.ts",
+    "handoff:demo": "tsx scripts/create-handoff-demo.ts",
+    "build:handoff": "npm run build:sdk && tsx scripts/build-handoff.ts",
+    "studio:service": "tsx services/studio-agent/server.ts",
+    "build:studio-agent": "tsx scripts/build-studio-agent.ts",
+    "db:migrate": "tsx services/studio-agent/pg-migrate.ts migrate",
+    "db:verify": "tsx services/studio-agent/pg-migrate.ts verify",
+    "db:rollback-empty": "tsx services/studio-agent/pg-migrate.ts rollback-empty",
+    "studio:worker": "tsx services/studio-agent/pg-worker.ts",
+    "studio:archive": "tsx services/studio-agent/archive-cli.ts"
   },
   "dependencies": {
     "parse5": "7.3.0",
+    "pg": "8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0",
+    "@modelcontextprotocol/server": "2.0.0",
     "@types/node": "24.13.3",
+    "@types/pg": "8.23.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "5.2.0",
+    "embedded-postgres": "18.4.0-beta.17",
     "esbuild": "0.28.2",
     "fake-indexeddb": "6.2.5",
     "moveable": "0.53.0",
@@ -36,6 +55,7 @@
     "tsx": "4.23.12",
     "typescript": "5.9.3",
     "vite": "7.3.6",
-    "vitest": "3.2.7"
+    "vitest": "3.2.7",
+    "zod": "4.6.5"
   }
 }

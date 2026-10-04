@@ -14,6 +14,7 @@ export type TextTarget = {
 };
 export type Inspection = {
   targets: TextTarget[];
+  headings: { id: string; text: string; level: number; start: number }[];
   scripts: number;
   svg: number;
   externalResources: number;
@@ -38,9 +39,16 @@ const removed = new Set(
 function isElement(node: Node): node is Element {
   return "tagName" in node;
 }
+function headingText(node: Node): string {
+  if (isElement(node) && excluded.has(node.tagName)) return "";
+  if (node.nodeName === "#text" && "value" in node) return node.value;
+  if (isElement(node) && node.tagName === "br") return " ";
+  return "childNodes" in node ? node.childNodes.map(headingText).join("") : "";
+}
 function inspectTree(tree: Node): Inspection {
   const report: Inspection = {
     targets: [],
+    headings: [],
     scripts: 0,
     svg: 0,
     externalResources: 0,
@@ -65,6 +73,10 @@ function inspectTree(tree: Node): Inspection {
       }
       // Source spans are used for edits, never a DOM reserialization of the original.
       const location = node.sourceCodeLocation;
+      if (!blocked && /^h[1-6]$/.test(node.tagName) && node.namespaceURI === "http://www.w3.org/1999/xhtml" && location?.startTag) {
+        const text = headingText(node).replace(/\s+/g, " ").trim();
+        if (text) report.headings.push({ id: `heading-${location.startOffset}`, text, level: Number(node.tagName[1]), start: location.startOffset });
+      }
       if (
         !blocked &&
         textTags.has(node.tagName) &&
@@ -155,7 +167,15 @@ function bridge(
     const reviewing = ${JSON.stringify(reviewing)};
     const annotating = reviewing && ${!reviewReadOnly};
     const send = (type, extra = {}) => parent.postMessage({channel, type, ...extra}, '*');
-    let active = null, before = '';
+    let active = null, before = '', composing = false, settling = false, pendingBlur = false, compositionEpoch = 0;
+    document.addEventListener('compositionstart', e => { if (e.target === active) { composing = true; compositionEpoch++; } });
+    document.addEventListener('compositionend', e => {
+      if (e.target !== active) return;
+      composing = false; settling = true;
+      const epoch = compositionEpoch;
+      // Let the browser apply its final input before ending an interrupted edit.
+      setTimeout(() => { if (epoch !== compositionEpoch) return; settling = false; if (pendingBlur) finishText(); }, 0);
+    });
     const target = e => e.target instanceof Element ? e.target.closest('[data-doc-text]') : null;
     let marker = null, marked = null, start = null;
     const comments = ${markerRuntime ? `reviewing ? (${markerRuntime})((id, anchor) => { draw(anchor); send('review-open', {id}); }) : null` : "null"};
@@ -229,20 +249,23 @@ function bridge(
     }, true);
     document.addEventListener('dblclick', e => {
       const node = target(e);
-      if (!editing || !node) return;
+      if (!editing || !node || composing || settling) return;
       active = node; before = node.textContent;
       node.setAttribute('contenteditable', 'plaintext-only'); node.focus();
       send('editing');
     });
-    document.addEventListener('focusout', e => {
-      if (!active || e.target !== active) return;
+    function finishText() {
+      if (!active) return;
+      if (composing || settling) { pendingBlur = true; return; }
+      pendingBlur = false;
       const node = active; active = null; node.removeAttribute('contenteditable');
       if (node.textContent !== before) send('edit', {id: node.getAttribute('data-doc-text'), text: node.textContent, scroll: window.scrollY});
       send('ended');
-    });
+    }
+    document.addEventListener('focusout', e => { if (e.target === active) finishText(); });
     document.addEventListener('keydown', e => {
       if (isComment(e)) return;
-      if ((${composingKey.toString()})(e)) return;
+      if (composing || settling || (${composingKey.toString()})(e)) return;
       if (active && e.key === 'Escape') { active.textContent = before; active.blur(); }
       if (reviewing && e.key === 'Escape') { start = null; clearMarker(); send('annotation-cancel'); }
       if (annotating && e.key === 'Enter') {
@@ -272,6 +295,12 @@ function bridge(
     document.addEventListener('submit', e => e.preventDefault());
     window.addEventListener('message', e => {
       if (e.source !== parent || e.data?.channel !== channel) return;
+      if (e.data.type === 'heading-locate') {
+        if (active || composing || settling || typeof e.data.id !== 'string') return;
+        const heading = [...document.querySelectorAll('[data-doc-heading]')].find(n => n.getAttribute('data-doc-heading') === e.data.id);
+        if (heading) { heading.setAttribute('tabindex', '-1'); heading.focus({preventScroll:true}); heading.scrollIntoView({block:'start'}); }
+        return;
+      }
       if (e.data.type === 'request-ready') { send('ready'); return; }
       if (editing && e.data.type === 'object-focus' && typeof e.data.id === 'string') {
         selectObject([...document.querySelectorAll('[data-doc-object]')].find(n => n.getAttribute('data-doc-object') === e.data.id) ?? null);
@@ -281,6 +310,7 @@ function bridge(
         clearMarker(); comments?.update(e.data.threads); return;
       }
       if (e.data.type === 'flush') {
+        if (composing || settling) { send('flush-blocked'); return; }
         if (active) active.blur();
         send('flushed'); return;
       }
@@ -312,7 +342,8 @@ export function createPreview(
   if (!/^[a-zA-Z0-9-]{8,100}$/.test(channel))
     throw new Error("Invalid preview channel");
   const tree = parse(source, { sourceCodeLocationInfo: true });
-  const targets = inspectTree(tree).targets;
+  const { targets, headings } = inspectTree(tree);
+  const headingOffsets = new Map(headings.map(h => [h.start, h.id]));
   const byOffset = new Map(targets.filter(t => !t.part).map((target) => [target.start, target.id]));
   const parts = new Map(targets.filter(t => t.part).map(t => [t.start, t.id]));
   const clean = (node: Node) => {
@@ -342,6 +373,8 @@ export function createPreview(
           );
         return true;
       });
+      const headingId = headingOffsets.get(node.sourceCodeLocation?.startOffset ?? -1);
+      if (headingId) node.attrs.push({ name: "data-doc-heading", value: headingId });
       const id = byOffset.get(
         node.sourceCodeLocation?.startTag?.endOffset ?? -1,
       );

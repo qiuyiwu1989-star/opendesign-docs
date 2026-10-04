@@ -9,7 +9,8 @@ import {
 import { listDocuments, saveDocument, type DocumentRecord } from "./store";
 import { demo, slideDemo } from "./demo";
 import { inspectSlides } from "./slides";
-import { MAX_DOCUMENT_BYTES } from "./slide-insert";
+import { HandoffDialog, type ImportConfirmation } from "./HandoffDialog";
+import type { HandoffItem, ImportResult } from "./handoff";
 import { deferredFeature } from "./deferred-feature";
 import type { SlidesEditor as SlideEditorView } from "./SlidesEditor";
 import type { LongEditor as LongEditorView } from "./LongEditor";
@@ -20,10 +21,11 @@ import "./style.css";
 import "./export.css";
 import "./review.css";
 
+const Studio = deferredFeature<{ onClose: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult> }>(() => import("./Studio").then(m => ({ default: m.Studio })), "Studio");
 const SlidesEditor = deferredFeature<ComponentProps<typeof SlideEditorView>>(() => import("./SlidesEditor").then(m => ({ default: m.SlidesEditor })), "演示编辑器");
 const Editor = deferredFeature<ComponentProps<typeof LongEditorView>>(() => import("./LongEditor").then(m => ({ default: m.LongEditor })), "文档编辑器");
 
-const newDocument = (name: string, source: string): DocumentRecord => ({
+const newDocument = (name: string, source: string, label = "原始导入"): DocumentRecord => ({
   id: crypto.randomUUID(),
   name,
   versions: [
@@ -31,24 +33,49 @@ const newDocument = (name: string, source: string): DocumentRecord => ({
       id: crypto.randomUUID(),
       source,
       createdAt: new Date().toISOString(),
-      label: "原始导入",
+      label,
     },
   ],
 });
+const leaveMessage = "切换文档？已暂存草稿会保留；尚未暂存或未应用的输入可能丢失。建议先保存版本。";
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "操作失败，请导出备份后重试。";
 
 export default function App() {
   const [docs, setDocs] = useState<DocumentRecord[]>([]);
   const [active, setActive] = useState("");
+  const [studioOpen, setStudioOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [scenarioLoading, setScenarioLoading] = useState(false);
+  const scenarioLock = useRef(false);
   const [error, setError] = useState("");
+  const [confirmation, setConfirmation] = useState<ImportConfirmation | null>(null);
   const [query, setQuery] = useState("");
   const [libraryOpen, setLibraryOpen] = useState(false);
   const libraryButton = useRef<HTMLButtonElement>(null);
   const dirty = useRef(false);
+  const editEpoch = useRef(0);
   const input = useRef<HTMLInputElement>(null);
+  const importing = useRef(false);
+  const handoffSave = useRef<(item: HandoffItem) => Promise<ImportResult>>(async () => ({ ok: false, reason: "storage" }));
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    let dispose: (() => void) | undefined;
+    const start = () => {
+      if (window.location.hash !== "#handoff=v1") return;
+      void import("./handoff").then(({ startHandoff }) => {
+        if (!cancelled && window.location.hash === "#handoff=v1") {
+          dispose?.();
+          dispose = startHandoff(window, item => handoffSave.current(item), setError, message => new Promise(resolve => setConfirmation({ message, resolve })));
+        }
+      }).catch(() => { if (!cancelled) setError("交接工具加载失败，请刷新重试或导入 HTML 文件。"); });
+    };
+    window.addEventListener("hashchange", start);
+    start();
+    return () => { cancelled = true; dispose?.(); window.removeEventListener("hashchange", start); };
+  }, [loading]);
   useEffect(() => {
     void listDocuments()
       .then((rows) => {
@@ -71,7 +98,7 @@ export default function App() {
   const switchAllowed = () =>
     !dirty.current ||
     window.confirm(
-      "切换文档？已暂存草稿会保留；尚未暂存或未应用的输入可能丢失。建议先保存版本。",
+      leaveMessage,
     );
   const select = (id: string) => {
     if (id === active) {
@@ -85,63 +112,66 @@ export default function App() {
     setLibraryOpen(false);
     libraryButton.current?.focus();
   };
-  const add = async (items: { name: string; source: string }[]) => {
-    if (!switchAllowed()) return;
+  const add = async (items: HandoffItem[], guard: () => boolean | Promise<boolean> = switchAllowed): Promise<ImportResult> => {
+    if (importing.current) return { ok: false, reason: "rejected" };
+    importing.current = true;
+    if (!await guard()) { importing.current = false; return { ok: false, reason: "rejected" }; }
+    const acceptedEpoch = editEpoch.current;
     setBusy(true);
     setError("");
     const added: DocumentRecord[] = [];
     try {
       for (const item of items) {
-        const record = newDocument(item.name, item.source);
+        const record = newDocument(item.name, item.source, item.label);
         await saveDocument(record);
         added.push(record);
       }
+      return { ok: true };
     } catch (e) {
       setError(message(e));
+      return { ok: false, reason: "storage" };
     } finally {
       setDocs((previous) => [...added, ...previous]);
-      if (added[0]) {
+      if (added[0] && (editEpoch.current === acceptedEpoch || await guard())) {
         dirty.current = false;
         setActive(added[0].id);
         setLibraryOpen(false);
       }
       setBusy(false);
+      importing.current = false;
     }
   };
+  handoffSave.current = item => add([item], () => !dirty.current || new Promise<boolean>(resolve => setConfirmation({ message: leaveMessage, resolve })));
   const importFiles = async (files: File[]) => {
     try {
       if (files.length > 100) throw new Error("一次最多导入 100 份 HTML。");
-      for (const file of files) {
-        if (!/\.html?$/i.test(file.name))
-          throw new Error(`暂不支持 ${file.name}，请选择 HTML 文件。`);
-        if (file.size > MAX_DOCUMENT_BYTES)
-          throw new Error(
-            `${file.name} 超过 ${MAX_DOCUMENT_BYTES / 1024 / 1024} MiB 文件限制。`,
-          );
-      }
-      const items = await Promise.all(
-        files.map(async (file) => {
-          const bytes = await file.arrayBuffer();
-          let source: string;
-          try {
-            source = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-          } catch {
-            throw new Error(
-              `${file.name} 不是 UTF-8 编码，请先转换编码，避免中文损坏。`,
-            );
-          }
-          if (!source.trim()) throw new Error(`${file.name} 是空文件。`);
-          return { name: file.name, source };
-        }),
-      );
+      const { readDocumentFile } = await import("./document-import");
+      const items = await Promise.all(files.map(readDocumentFile));
       await add(items);
     } catch (e) {
       setError(message(e));
     }
   };
+  const openScenario = async (kind: "teacher" | "enterprise") => {
+    if (scenarioLock.current) return;
+    scenarioLock.current = true;
+    setScenarioLoading(true);
+    setError("");
+    try {
+      const { scenarioDocuments } = await import("./scenarios");
+      await add(scenarioDocuments(kind));
+    } catch (e) {
+      setError(`样板加载失败，请重试。${message(e)}`);
+    } finally {
+      scenarioLock.current = false;
+      setScenarioLoading(false);
+    }
+  };
   const current = docs.find((doc) => doc.id === active);
   const showLibrary = libraryOpen || (!loading && !current);
+  const mcpEntry = <a className="docs-mcp-entry" href={`${import.meta.env.BASE_URL}integrate/#mcp`} target="_blank" rel="noopener noreferrer" title="MCP 接入与开发者文档（新标签页）">MCP 接入 <span aria-hidden="true">↗</span></a>;
   const libraryControl = (
+    <>
     <button
       ref={libraryButton}
       className="docs-library-toggle"
@@ -153,9 +183,13 @@ export default function App() {
     >
       <span aria-hidden="true">▤</span> 文档
     </button>
+    <button onClick={() => setStudioOpen(true)} title="打开创作工作区，当前文档保留">Studio</button>
+    </>
   );
   return (
     <div className={`app docs-shell ${showLibrary ? "docs-library-open" : ""}`}>
+      {studioOpen && <Studio onClose={() => setStudioOpen(false)} onCreate={add} />}
+      {confirmation && <HandoffDialog request={confirmation} close={() => setConfirmation(null)} />}
       <aside
         className="library"
         id="docs-library"
@@ -199,6 +233,14 @@ export default function App() {
         >
           演示页示例
         </button>
+        <button className="studio-launch" disabled={loading || busy} onClick={() => setStudioOpen(true)}><span>Studio · 创作草稿</span><small>从需求到方案 →</small></button>
+        <details className="scenario-library">
+          <summary>从场景样板开始</summary>
+          <p>免费创建副本，保留你的修改。内容为合成示例。</p>
+          <button disabled={loading || busy || scenarioLoading} onClick={() => void openScenario("teacher")}>教师课程 · 9 页＋活动单</button>
+          <button disabled={loading || busy || scenarioLoading} onClick={() => void openScenario("enterprise")}>企业提案 · 8 页</button>
+          {scenarioLoading && <p role="status">正在创建样板副本…</p>}
+        </details>
         <BackupMenu
           record={current}
           disabled={loading || busy}
@@ -263,6 +305,7 @@ export default function App() {
             ))}
         </nav>
         <div className="local-note">
+          {mcpEntry}
           <strong>仅存于此浏览器</strong>
           <details>
             <summary>存储说明</summary>
@@ -304,6 +347,7 @@ export default function App() {
                 libraryControl={libraryControl}
                 onDirty={(value) => {
                   dirty.current = value;
+                  editEpoch.current++;
                 }}
                 onSaved={draft.saved}
               />
@@ -374,6 +418,7 @@ function DocumentWorkspace(props: EditorProps) {
             演示页{pages.length ? ` · ${pages.length}` : ""}
           </button>
         </div>
+        {["Studio 结构草稿", "Studio 服务端独立副本"].includes(props.record.versions[0]?.label ?? "") && <span className="docs-copy-label" title="独立编辑副本；修改不会回写 Studio 草稿">Docs 副本</span>}
         {props.draft.status}
       </div>
       {slides && pages.length ? (

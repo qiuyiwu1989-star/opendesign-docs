@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ComponentProps } from "react";
+import "./long-workspace.css";
 import { createPreview, inspectHtml, patchText } from "./html";
 import { saveDocument, type DocumentRecord } from "./store";
 import type { DraftControls } from "./DraftWorkspace";
 import { editHistory, historyOf, moveHistory } from "./history";
 import { validateAnchor, type ReviewAnchor, type ReviewRecord } from "./review";
-import { ReviewPanel, type ReviewPanelHandle } from "./ReviewPanel";
+import type { ReviewPanelHandle } from "./ReviewPanel";
 import { ResourcePanel } from "./ResourcePanel";
 import { ExportControl } from "./ExportControl";
 import { htmlExportBlob } from "./html-export";
 import { deferredFeature } from "./deferred-feature";
 import type { DocumentObjectPanelProps } from "./DocumentObjectPanel";
+const ReviewTools = deferredFeature<ComponentProps<typeof import("./ReviewPanel").ReviewPanel>>(() => import("./ReviewPanel").then(m => ({ default: m.ReviewPanel })), "批注工具");
 const ObjectTools = deferredFeature<DocumentObjectPanelProps>(() => import("./DocumentObjectPanel").then(m => ({ default: m.DocumentObjectPanel })), "对象工具");
 const message = (error: unknown) => error instanceof Error ? error.message : "操作失败，请稍后重试。";
 
@@ -37,7 +39,11 @@ export function LongEditor({
   const [objectSize, setObjectSize] = useState<{ width: number; height: number }>();
   const scrollPosition = useRef(0);
   const [text, setText] = useState("");
-  const [tab, setTab] = useState<"edit" | "versions" | "review">("edit");
+  const inspectorId = useId();
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [tab, setTab] = useState<"edit" | "versions" | "review" | "outline">("edit");
+  const revealPanel = (next: typeof tab) => { setTab(next); setInspectorOpen(true); };
+  const [reviewActivated, setReviewActivated] = useState(false);
   const [reviewVersionId, setReviewVersionId] = useState("");
   const [reviewDirty, setReviewDirty] = useState(false);
   const [reviewData, setReviewData] = useState<ReviewRecord | null>(null);
@@ -46,6 +52,7 @@ export function LongEditor({
   const reviewPanel = useRef<ReviewPanelHandle>(null);
   const reviewVersion = record.versions.find((v) => v.id === reviewVersionId);
   const reviewing = Boolean(reviewVersion);
+  const reviewLoading = reviewing && !reviewData;
   const [markerRuntime, setMarkerRuntime] = useState("");
   const [markerRetry, setMarkerRetry] = useState(0);
   useEffect(() => {
@@ -81,6 +88,7 @@ export function LongEditor({
   const frame = useRef<HTMLIFrameElement>(null);
   const dirty = source !== record.versions.at(-1)!.source;
   const inspection = useMemo(() => inspectHtml(source), [source]);
+  const headings = useMemo(() => reviewVersion ? inspectHtml(reviewVersion.source).headings : inspection.headings, [reviewVersion, inspection]);
   const channel = useMemo(
     () => crypto.randomUUID(),
     [renderSource, editing, reviewVersionId, markerRuntime],
@@ -105,14 +113,16 @@ export function LongEditor({
   );
   const target = inspection.targets.find((item) => item.id === selected);
   const pendingText = Boolean(target && text !== target.text);
+  const [geometryDraft, setGeometryDraft] = useState(false);
+  const pendingChanges = pendingText || geometryDraft;
   useEffect(() => {
     onDirty(
       dirty ||
         directEditing ||
-        Boolean(target && text !== target.text) ||
+        pendingChanges ||
         reviewDirty,
     );
-  }, [dirty, directEditing, target?.text, text, reviewDirty]);
+  }, [dirty, directEditing, target?.text, text, reviewDirty, geometryDraft]);
   useEffect(
     () => () => {
       clearTimeout(flushTimer.current);
@@ -142,28 +152,28 @@ export function LongEditor({
     setText(target?.text ?? "");
   }, [target?.text, selected]);
   const persist = async () => {
-    await draft.beforeSave();
-    const nextSource = sourceRef.current;
-    if (nextSource === record.versions.at(-1)!.source) {
-      savingRef.current = false;
-      setSaving(false);
-      setStatus("已保存在本机");
-      draft.saveFailed();
-      return;
-    }
-    const next: DocumentRecord = {
-      ...record,
-      versions: [
-        ...record.versions,
-        {
-          id: crypto.randomUUID(),
-          source: nextSource,
-          createdAt: new Date().toISOString(),
-          label: `保存版本 ${record.versions.length + 1}`,
-        },
-      ],
-    };
     try {
+      await draft.beforeSave();
+      const nextSource = sourceRef.current;
+      if (nextSource === record.versions.at(-1)!.source) {
+        savingRef.current = false;
+        setSaving(false);
+        setStatus("已保存在本机");
+        draft.saveFailed();
+        return;
+      }
+      const next: DocumentRecord = {
+        ...record,
+        versions: [
+          ...record.versions,
+          {
+            id: crypto.randomUUID(),
+            source: nextSource,
+            createdAt: new Date().toISOString(),
+            label: `保存版本 ${record.versions.length + 1}`,
+          },
+        ],
+      };
       await saveDocument(next, record.versions.at(-1)!.id);
       await onSaved(next);
       onDirty(sourceRef.current !== nextSource);
@@ -186,23 +196,23 @@ export function LongEditor({
       const data = event.data;
       if (data.type === "ready") setReady(true);
       if (data.type === "scroll-position" && Number.isFinite(data.scroll) && data.scroll >= 0) scrollPosition.current = Math.min(data.scroll, 1e7);
-      if (data.type === "object-select" && editing && !reviewing && !pendingText && typeof data.id === "string") {
+      if (data.type === "object-select" && editing && !reviewing && !pendingChanges && typeof data.id === "string") {
         setObjectId(data.id);
         setObjectSize(data.width > 0 && data.height > 0 ? { width: data.width, height: data.height } : undefined);
-        setTab("edit");
+        revealPanel("edit");
       }
-      if (data.type === "review-open" && reviewing && typeof data.id === "string") {
-        setTab("review");
+      if (data.type === "review-open" && reviewing && !reviewLoading && typeof data.id === "string") {
+        revealPanel("review");
         reviewPanel.current?.openThread(data.id);
       }
       if (data.type === "editing") setDirectEditing(true);
       if (data.type === "ended") setDirectEditing(false);
-      if (data.type === "annotation" && reviewVersion) {
+      if (data.type === "annotation" && reviewVersion && !reviewLoading) {
         try {
           reviewPanel.current?.selectAnchor(
             validateAnchor(data.anchor, reviewVersion.source),
           );
-          setTab("review");
+          revealPanel("review");
         } catch (e) {
           setError(message(e));
         }
@@ -212,9 +222,9 @@ export function LongEditor({
           "当前窗口宽度或排版与批注创建时不同，无法精确显示框选位置。请调整至批注注明的视口宽度；批注仍保留在原版本。",
         );
       if (data.type === "select" && typeof data.id === "string") {
-        if (pendingText) { setError("请先应用右侧文字修改。"); return; }
+        if (pendingChanges) { setError("请先应用或取消右侧修改。"); return; }
         setSelected(data.id);
-        setTab("edit");
+        revealPanel("edit");
       }
       if (
         data.type === "edit" &&
@@ -232,8 +242,16 @@ export function LongEditor({
           setRenderSource(next);
           setDirectEditing(false);
         } catch (e) {
+          // A following acknowledgement must not save/export stale source.
+          clearTimeout(flushTimer.current);
+          afterFlush.current = null;
           setError(message(e));
         }
+      }
+      if (data.type === "flush-blocked") {
+        clearTimeout(flushTimer.current);
+        afterFlush.current = null;
+        setError("请先确认或取消输入法候选文字，再保存或导出。");
       }
       if (data.type === "flushed" && afterFlush.current) {
         clearTimeout(flushTimer.current);
@@ -258,13 +276,14 @@ export function LongEditor({
     afterFlush.current = action;
     flushTimer.current = setTimeout(() => {
       afterFlush.current = null;
-      setError("页面暂未响应。修改仍保留在当前工作副本，请稍后重试。");
+      setError("页面未响应，修改已保留，请重试。");
     }, 3000);
     frame.current?.contentWindow?.postMessage({ channel, type: "flush" }, "*");
   };
   const save = () => {
-    if (pendingText) {
-      setError("右侧文字尚未应用。请先点击“应用修改”，再保存版本。");
+    if (pendingChanges) {
+      revealPanel("edit");
+      setError("修改未应用，请应用或取消后保存。");
       return;
     }
     flush(() => {
@@ -283,10 +302,10 @@ export function LongEditor({
   };
   const beginReview = (versionId: string) => {
     if (reviewVersionId === versionId) {
-      setTab("review");
+      revealPanel("review");
       return;
     }
-    if (dirty || directEditing || pendingText) {
+    if (dirty || directEditing || pendingChanges) {
       setError(
         "请先结束文字编辑、应用修改并保存版本，再开始审阅。批注只绑定已保存版本。",
       );
@@ -298,13 +317,15 @@ export function LongEditor({
     )
       return;
     setError("");
+    setReviewActivated(true);
     setReviewVersionId(versionId);
     setEditing(false);
-    setTab("review");
+    revealPanel("review");
   };
   const leaveReview = (edit: boolean) => {
-    if (pendingText) {
-      setError("请先应用右侧文字修改，再切换模式。");
+    if (pendingChanges) {
+      revealPanel("edit");
+      setError("请先应用或取消右侧修改，再切换模式。");
       return;
     }
     if (reviewDirty && !window.confirm("放弃尚未保存的批注或回复，退出审阅？"))
@@ -313,12 +334,13 @@ export function LongEditor({
       setReviewVersionId("");
       setRenderSource(sourceRef.current);
       setEditing(edit);
-      setTab("edit");
+      revealPanel("edit");
     });
   };
   const undoRedo = (direction: "undo" | "redo") => {
-    if (pendingText) {
-      setError("请先应用右侧文字修改，再撤销或重做。");
+    if (pendingChanges) {
+      revealPanel("edit");
+      setError("请先应用或取消右侧修改，再撤销或重做。");
       return;
     }
     flush(() => {
@@ -330,8 +352,9 @@ export function LongEditor({
     });
   };
   const download = async () => {
-    if (pendingText) {
-      setError("右侧文字尚未应用。请先点击“应用修改”，再导出。");
+    if (pendingChanges) {
+      revealPanel("edit");
+      setError("修改未应用，请应用或取消后导出。");
       return;
     }
     setError("");
@@ -352,15 +375,15 @@ export function LongEditor({
     setDownloadUrl(url);
   };
   return (
-    <div className="docs-long-editor">
+    <div className={`docs-long-editor${inspectorOpen ? "" : " long-inspector-hidden"}`}>
       <header className="toolbar">
         <div className="document-title">
           <strong>{record.name}</strong>
           <small aria-live="polite">
-            {reviewing ? `审阅 · ${reviewVersion?.label} · 批注仅保存本机` : directEditing
+            {saving ? "正在保存版本…" : reviewing ? `审阅 · ${reviewVersion?.label} · 批注仅保存本机` : directEditing
               ? "编辑中 · 结束后暂存"
-              : pendingText
-                ? "文字待应用 · 未暂存"
+              : pendingChanges
+                ? "修改待应用 · 未暂存"
                 : dirty
                   ? "版本待保存"
                   : status}
@@ -413,7 +436,7 @@ export function LongEditor({
           )}
           <ResourcePanel source={reviewVersion?.source ?? source}
             contextKey={`${record.versions.at(-1)!.id}:${reviewVersionId ?? ""}:${reviewing}`}
-            disabled={!ready || saving || reviewing || directEditing || pendingText}
+            disabled={!ready || saving || reviewing || directEditing || pendingChanges}
             onApply={(expected, next) => {
               if (sourceRef.current !== expected || savingRef.current) throw new Error("文档已变化，请重试。");
               commit(next);
@@ -421,7 +444,7 @@ export function LongEditor({
               setSelected("");
               setObjectId("");
             }} />
-          <ExportControl name={record.name} url={!pendingText && !directEditing ? downloadUrl : ""}
+          <ExportControl name={record.name} url={!pendingChanges && !directEditing ? downloadUrl : ""}
             reviewUrl={reviewUrl} versionLabel={reviewVersion?.label ?? ""}
             disabled={saving || !ready || (reviewing && (!reviewData || reviewDirty))} onPrepare={() => flush(() => void download())}
             onDismiss={() => { setDownloadUrl(""); setReviewUrl(""); }} />
@@ -442,22 +465,31 @@ export function LongEditor({
           <button onClick={() => setError("")}>关闭</button>
         </div>
       )}
+      <div className="long-workspace-bar">
+        <span>{reviewing ? "审阅已保存版本" : editing ? "编辑工作副本" : "阅读文档"}<small>{reviewing ? "批注绑定当前审阅版本" : "保存版本后可回看"}</small></span>
+        <button aria-expanded={inspectorOpen} aria-controls={inspectorId}
+          onClick={() => setInspectorOpen(open => !open)}>
+          {inspectorOpen ? "收起侧栏" : "展开侧栏"}{!inspectorOpen && pendingChanges ? " · 修改待应用" : !inspectorOpen && reviewDirty ? " · 批注待保存" : ""}
+        </button>
+      </div>
       <div className="editor-body">
         <div className="page-container">
           <iframe
+            key={channel}
             ref={frame}
             title="HTML 文档页面"
             onLoad={() => frame.current?.contentWindow?.postMessage({ channel, type: "request-ready" }, "*")}
-            inert={saving || undefined}
-            style={{ pointerEvents: saving ? "none" : undefined }}
+            inert={saving || pendingChanges || reviewLoading || undefined}
+            style={{ pointerEvents: saving || pendingChanges || reviewLoading ? "none" : undefined }}
             srcDoc={preview}
             sandbox="allow-scripts"
             referrerPolicy="no-referrer"
             allow="camera 'none'; microphone 'none'; geolocation 'none'"
           />
         </div>
-        <aside className="inspector">
+        <aside id={inspectorId} aria-label="文档工具" className="inspector" hidden={!inspectorOpen}>
           <div className="panel-tabs">
+            <button aria-pressed={tab === "outline"} onClick={() => setTab("outline")}>目录</button>
             <button
               aria-pressed={tab === "edit"}
               onClick={() => setTab("edit")}
@@ -482,19 +514,31 @@ export function LongEditor({
             </button>
           </div>
           <div hidden={tab !== "review"}>
-            <ReviewPanel
+            {reviewActivated && <ReviewTools
               ref={reviewPanel}
               record={record}
               versionId={reviewVersionId}
               onDirty={onReviewDirty}
               onLocate={locateReview}
               onReviewChange={setReviewData}
-            />
+            />}
           </div>
-          {tab === "edit" ? (
-            <>
+          <div hidden={tab !== "outline"}>
+            <nav className="document-outline" aria-label="文档目录">
+              <h2>章节目录</h2>
+              {headings.length ? <ol>{headings.map(heading => <li key={heading.id}>
+                <button disabled={!ready || saving || directEditing || pendingChanges}
+                  style={{ paddingInlineStart: 10 + (heading.level - 1) * 12 }}
+                  onClick={() => frame.current?.contentWindow?.postMessage({ channel, type: "heading-locate", id: heading.id }, "*")}
+                >{heading.text}</button>
+              </li>)}</ol> : <p>暂无标题，添加后可定位章节。</p>}
+              {(directEditing || pendingChanges) && <p>结束编辑或应用修改后可跳转。</p>}
+            </nav>
+          </div>
+          <div hidden={tab !== "edit"}>
               {editing && !reviewing && <ObjectTools source={source} selected={objectId} size={objectSize}
                 disabled={!ready || saving || directEditing || pendingText}
+                onGeometryDraft={setGeometryDraft}
                 onSelect={id => { setSelected(""); setObjectId(id); setObjectSize(undefined); }}
                 onApply={(expected, next, id) => {
                   if (sourceRef.current !== expected || savingRef.current || reviewing || !editing || pendingText || directEditing) throw new Error("页面已变化，请重新选择。");
@@ -509,13 +553,13 @@ export function LongEditor({
                     <textarea
                       aria-label="文字内容"
                       value={text}
-                      disabled={!editing || saving}
+                      disabled={!editing || saving || directEditing || geometryDraft}
                       onChange={(e) => setText(e.target.value)}
                     />
                   </label>
                   <button
                     className="primary"
-                    disabled={!editing || saving || text === target.text}
+                    disabled={!editing || saving || directEditing || geometryDraft || text === target.text}
                     onClick={() => {
                       try {
                         const next = patchText(sourceRef.current, target, text);
@@ -528,19 +572,19 @@ export function LongEditor({
                   >
                     应用修改
                   </button>
+                  {pendingText && <button className="long-cancel-text" disabled={saving || directEditing}
+                    onClick={() => { setText(target.text); setError(""); }}>取消文字修改</button>}
                 </>
               ) : (
-                <p>点击页面中的标题或正文。</p>
+                <p>点击标题或正文。</p>
               )}
               <details className="compatibility">
                 <summary>预览与导出说明</summary>
                 <p>
-                  嵌套文字分段修改，SVG 图形内部暂不编辑。内容块沿文档顺序调整，不改为自由画布。
-                  导出保留原代码与资源引用，不包含版本历史，也不是离线资源包。
+                  分段改字，按原顺序调整；SVG 内部不可编辑。
                 </p>
                 <p>
-                  保留静态 HTML、内联 CSS 和
-                  SVG。原页面脚本、外部字体和资源不在预览中运行或加载。
+                  预览禁用脚本和外部资源。导出保留原代码及引用，不含历史或离线资源。
                 </p>
                 <dl>
                   <dt>页面脚本</dt>
@@ -553,15 +597,13 @@ export function LongEditor({
                   <dd>{inspection.relativeResources}</dd>
                 </dl>
                 <p>
-                  依赖脚本的图表、切换和动效可能缺失。上述统计仅含 HTML 属性；
-                  常见 CSS 引用见“资源”面板。外部 CSS 资源也不在预览中加载。
+                  HTML 属性统计；CSS 见“资源”。
                 </p>
               </details>
-            </>
-          ) : tab === "versions" ? (
-            <>
+          </div>
+          <div hidden={tab !== "versions"}>
               <h2>版本历史</h2>
-              <p>加载为草稿，保留原有版本。</p>
+              <p>加载草稿，保留原版本。</p>
               {[...record.versions].reverse().map((version, index) => (
                 <div className="version" key={version.id}>
                   <strong>
@@ -573,7 +615,7 @@ export function LongEditor({
                   </small>
                   <button
                     disabled={
-                      saving || reviewing || directEditing || pendingText
+                      saving || reviewing || directEditing || pendingChanges
                     }
                     onClick={() => {
                       if (
@@ -597,8 +639,7 @@ export function LongEditor({
                   </button>
                 </div>
               ))}
-            </>
-          ) : null}
+          </div>
         </aside>
       </div>
     </div>

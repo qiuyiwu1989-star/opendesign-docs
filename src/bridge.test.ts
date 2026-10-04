@@ -144,3 +144,36 @@ describe("spec 013 trusted annotation bridge", () => {
     expect(messages.at(-1).type).toBe("anchor-unavailable");
   });
 });
+
+it.each([[false,false],[true,false],[false,true],[true,true]])("does not commit a candidate, including focusout=%s, cancel=%s", (blurFirst, cancel) => {
+ const events: Record<string,(e:any)=>void>={}, windows: Record<string,(e:any)=>void>={}, messages:any[]=[];
+ const timers: (()=>void)[]=[];
+ const parent={postMessage:(data:any)=>messages.push(data)};
+ class TextNode {
+  textContent="original";
+  closest(){return this;} getAttribute(){return "text-0";} setAttribute(){} removeAttribute(){} focus(){}
+  blur(){events.focusout!({target:this});}
+ }
+ const bridge=createPreview("<h1>original</h1>","ime-test",true).match(/<script nonce="ime-test">([\s\S]*?)<\/script>/)![1]!;
+ new Script(bridge).runInContext(createContext({setTimeout:(fn:()=>void)=>timers.push(fn),parent,Element:TextNode,document:{addEventListener:(k:string,f:any)=>events[k]=f},window:{scrollY:0,scrollTo(){},addEventListener:(k:string,f:any)=>windows[k]=f},requestAnimationFrame:(f:any)=>f()}));
+ const node=new TextNode(); const finalText=cancel?node.textContent:"confirmed"; events.dblclick!({target:node});
+ events.compositionstart?.({target:node});node.textContent="candidate";
+ events.compositionend!({target:node});
+ events.compositionstart!({target:node});
+ if(blurFirst) events.focusout!({target:node});
+ windows.message!({source:parent,data:{channel:"ime-test",type:"flush"}});
+ expect(messages.filter(m=>m.type==="edit"||m.type==="flushed")).toEqual([]);
+ expect(messages.at(-1).type).toBe("flush-blocked");
+ events.compositionend?.({target:node});node.textContent=finalText;
+ events.keydown!({key:"Escape",preventDefault(){}});
+ expect(node.textContent).toBe(finalText);
+ windows.message!({source:parent,data:{channel:"ime-test",type:"flush"}});
+ expect(messages.filter(m=>m.type==="edit"||m.type==="flushed")).toEqual([]);
+ timers.shift()!();
+ windows.message!({source:parent,data:{channel:"ime-test",type:"flush"}});
+ expect(messages.filter(m=>m.type==="edit"||m.type==="flushed")).toEqual([]);
+ timers.splice(0).forEach(fn=>fn());
+ windows.message!({source:parent,data:{channel:"ime-test",type:"flush"}});
+ expect(messages.filter(m=>m.type==="edit").map(m=>m.text)).toEqual(cancel?[]:[finalText]);
+ expect(messages.at(-1).type).toBe("flushed");
+});

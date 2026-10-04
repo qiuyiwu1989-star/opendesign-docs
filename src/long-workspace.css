@@ -1,0 +1,31 @@
+/* Long-document panels remain mounted when hidden to retain local input. */
+.docs-long-editor .long-workspace-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.docs-long-editor .long-workspace-bar > span { display: flex; gap: 12px; align-items: baseline; }
+.docs-long-editor .long-workspace-bar small { font-size: 11px; }
+.docs-long-editor .long-workspace-bar button { flex-shrink: 0; padding: 6px 10px; font-size: 12px; }
+.docs-long-editor .editor-body { grid-template-columns: minmax(0, 1fr) 300px; }
+.docs-long-editor.long-inspector-hidden .editor-body { grid-template-columns: minmax(0, 1fr); }
+.docs-long-editor .inspector[hidden],
+.docs-long-editor .inspector [hidden] { display: none; }
+.docs-long-editor .inspector { padding-inline: 16px; }
+.docs-long-editor .panel-tabs { position: sticky; top: 0; z-index: 1; background: var(--surface); gap: 0; justify-content: space-between; }
+.docs-long-editor .panel-tabs button { padding-inline: 5px; }
+.docs-long-editor .long-workspace-bar button:focus-visible,
+.docs-long-editor .panel-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 1100px) {
+  .docs-long-editor .editor-body { grid-template-columns: minmax(0, 1fr) 260px; }
+}
+@media (max-width: 800px) {
+  .docs-long-editor .long-workspace-bar { padding-inline: 12px; }
+  .docs-long-editor .long-workspace-bar > span { flex-direction: column; gap: 3px; }
+  .docs-long-editor .inspector { max-height: 60dvh; }
+}
+.docs-long-editor .long-cancel-text { margin-inline-start: 8px; }

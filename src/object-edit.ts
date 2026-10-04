@@ -1,4 +1,5 @@
 import type { DefaultTreeAdapterMap } from "parse5";
+import { staticFigure } from "./static-figure";
 import { inspectSlides, type SlideObject, type SlidePage } from "./slides";
 import { MAX_DOCUMENT_BYTES } from "./slide-insert";
 import { validateLocalImage, type LocalImage } from "./image-import";
@@ -146,7 +147,8 @@ function locate(source: string, target: SlideObject, catalog: ObjectCatalog = in
       isElement(node.parentNode) &&
       node.parentNode.tagName === "picture"
     );
-  return { node, nodes, page: page!, independent, basic, textStyle, replaceImage };
+  const chart = staticFigure(node, nodes, malformed);
+  return { node, nodes, page: page!, independent, basic, textStyle, replaceImage, chart };
 }
 
 export function getObjectCapabilities(source: string, target: SlideObject, catalog?: ObjectCatalog) {
@@ -154,11 +156,11 @@ export function getObjectCapabilities(source: string, target: SlideObject, catal
     const c = locate(source, target, catalog);
     return {
       duplicate: c.independent && c.page.objects.length + c.nodes.length <= 400,
-      remove: c.independent,
+      remove: c.independent || c.chart,
       textStyle: c.textStyle,
       replaceImage: c.replaceImage,
-      reorder: c.basic,
-      ...(!c.independent ? { reason: "复杂结构或引用仅支持局部修改。" } : {}),
+      reorder: c.basic || c.chart,
+      ...(!c.independent && !c.chart ? { reason: "复杂结构或引用仅支持局部修改。" } : {}),
     };
   } catch (e) {
     return {
@@ -223,7 +225,7 @@ export function duplicateObject(source: string, target: SlideObject, catalog: Ob
 
 export function removeObject(source: string, target: SlideObject, catalog?: ObjectCatalog) {
   const c = locate(source, target, catalog);
-  if (!c.independent) throw unsupported();
+  if (!c.independent && !c.chart) throw unsupported();
   const loc = c.node.sourceCodeLocation!;
   return apply(source, [
     { start: loc.startOffset, end: loc.endOffset, value: "" },

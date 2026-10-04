@@ -69,3 +69,32 @@ export function insertDocumentObject(source: string, target: SlideObject, conten
   if (!added) throw failure();
   return { source: next, objectId: added.id };
 }
+
+/** Validate against real parents, including filtered wrappers and unsafe sibling boundaries. */
+export function canMoveDocumentObjectTo(source: string, target: SlideObject, destination: SlideObject) {
+  try {
+    const a = locate(source, target), b = locate(source, destination);
+    if (target.id === destination.id || !a.node.parentNode || a.node.parentNode !== b.node.parentNode) return false;
+    const siblings = a.node.parentNode.childNodes;
+    const from = siblings.indexOf(a.node), to = siblings.indexOf(b.node);
+    const objects = inspectDocumentObjects(source)[0]!.objects;
+    return siblings.slice(Math.min(from, to), Math.max(from, to) + 1).every(node => {
+      if (node.nodeName === "#text" && "value" in node && !node.value.trim()) return true;
+      const object = objects.find(item => item.start === node.sourceCodeLocation?.startOffset);
+      return !!object && getObjectCapabilities(source, object, inspectDocumentObjects).reorder;
+    });
+  } catch { return false; }
+}
+/** A complete drag becomes one source change; preview/cancel never call this function. */
+export function moveDocumentObjectTo(source: string, target: SlideObject, destination: SlideObject, side: "before" | "after") {
+  if ((side !== "before" && side !== "after") || !canMoveDocumentObjectTo(source, target, destination)) throw failure();
+  const a = locate(source, target), b = locate(source, destination);
+  const siblings = a.node.parentNode!.childNodes.filter(node => !(node.nodeName === "#text" && "value" in node && !node.value.trim()));
+  const from = siblings.indexOf(a.node), to = siblings.indexOf(b.node);
+  if ((side === "before" && from + 1 === to) || (side === "after" && from === to + 1)) return { source, objectId: target.id };
+  const start = a.loc.startOffset, end = a.loc.endOffset;
+  const at = side === "before" ? b.loc.startOffset : b.loc.endOffset;
+  const without = source.slice(0, start) + source.slice(end);
+  const offset = at > start ? at - (end - start) : at;
+  return { source: finish(without.slice(0, offset) + source.slice(start, end) + without.slice(offset)), objectId: `doc-${offset}` };
+}

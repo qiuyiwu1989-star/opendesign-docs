@@ -1,15 +1,22 @@
 // Trusted fixed-page interaction bridge. Imported scripts never run.
 import { gesturePlacement } from "./slide-geometry";
 import { composingKey } from "./editing-keys";
-export function slideBridge(channel: string, pageId: string) {
+// Runtime notes live outside the template so they do not enlarge iframe payloads.
+// Known active-class decks need their normal flex/grid rules on every page.
+// Paint micro-adjustments immediately; parent acknowledgements can arrive
+// after newer keys or after the next pointer gesture has already started.
+// Match the persistence contract: positions are rounded to 0.1px and scale
+// to 0.001 by validatePlacement before the parent echoes the accepted edit.
+// Selection-only consumers never install editing, pointer or text handlers.
+// Do not prevent the initial down: double-click still enters text editing.
+export function slideBridge(channel: string, pageId: string, selectionOnly = false) {
   return `(() => {
     const gesturePlacement=${gesturePlacement.toString()};
     const composingKey=${composingKey.toString()};
-    const channel=${JSON.stringify(channel)}, pageId=${JSON.stringify(pageId)};
+    const channel=${JSON.stringify(channel)}, pageId=${JSON.stringify(pageId)}, selectionOnly=${selectionOnly};
     const send=(type,extra={})=>parent.postMessage({channel,type,...extra},'*');
     const page=[...document.querySelectorAll('[data-doc-slide]')].find(n=>n.getAttribute('data-doc-slide')===pageId);
     if(!page)return;
-    // Known active-class decks need their normal flex/grid rules on every page.
     const deckPages=[...document.querySelectorAll('[data-doc-slide]')];
     if(deckPages.some(n=>n.classList?.contains('active'))){deckPages.forEach(n=>n.classList.remove('active'));page.classList.add('active');}
     const original=getComputedStyle(page);
@@ -31,12 +38,8 @@ export function slideBridge(channel: string, pageId: string) {
     let zoom=1, selected=null, active=null, before='', gesture=null, composing=false, settling=false, pendingBlur=false, compositionEpoch=0;
     document.addEventListener('compositionstart',e=>{if(e.target===active){composing=true;compositionEpoch++;}});
     document.addEventListener('compositionend',e=>{if(e.target!==active)return;composing=false;settling=true;const epoch=compositionEpoch;setTimeout(()=>{if(epoch!==compositionEpoch)return;settling=false;if(pendingBlur)finishText();},0);});
-    // Paint micro-adjustments immediately; parent acknowledgements can arrive
-    // after newer keys or after the next pointer gesture has already started.
     const pendingPlacements=[];
     function paint(node,p){node.style.setProperty('translate',p.x+'px '+p.y+'px','important');node.style.setProperty('scale',String(p.scale),'important');outline();}
-    // Match the persistence contract: positions are rounded to 0.1px and scale
-    // to 0.001 by validatePlacement before the parent echoes the accepted edit.
     function commitPlacement(node,p){const id=node.getAttribute('data-doc-object');pendingPlacements.push({id,x:Math.round(p.x*10)/10,y:Math.round(p.y*10)/10,scale:Math.round(p.scale*1000)/1000});if(pendingPlacements.length>256)pendingPlacements.shift();send('placement',{id,placement:p});}
     const box=document.createElement('div');
     box.style.cssText='all:initial;position:fixed;pointer-events:none;box-sizing:border-box;border:2px solid #257563;z-index:2147483647;display:none';
@@ -54,7 +57,7 @@ export function slideBridge(channel: string, pageId: string) {
     function outline(){
       if(!selected){box.style.display='none';return;}
       const r=selected.getBoundingClientRect();Object.assign(box.style,{display:'block',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
-      const p=placement(selected);handle.style.display=p.editable?'block':'none';
+      const p=placement(selected);handle.style.display=p.editable&&!selectionOnly?'block':'none';
       const label='等比缩放 '+Number((p.scale*100).toFixed(1))+'%：拖动或方向键，Shift 加快';
       handle.title=label;handle.setAttribute('aria-label',label);
     }
@@ -69,6 +72,22 @@ export function slideBridge(channel: string, pageId: string) {
         ...(node.tagName==='IMG'?{imageSize:{width:parseFloat(s.width),height:parseFloat(s.height)}}:{})});}else send('object-clear');}
     document.addEventListener('load',e=>{if(e.target===selected&&selected?.tagName==='IMG')select(selected);},true);
     function fit(){endGesture(true);zoom=Math.min((innerWidth-40)/w,(innerHeight-40)/h,1);zoom=Math.max(.05,zoom);page.style.setProperty('left',Math.max(20,(innerWidth-w*zoom)/2)+'px','important');page.style.setProperty('top',Math.max(20,(innerHeight-h*zoom)/2)+'px','important');page.style.setProperty('transform','scale('+zoom+')','important');outline();}
+    if(selectionOnly){
+      let enabled=true;
+      const choose=e=>{if(e.target instanceof Element&&e.target.closest('a'))e.preventDefault();if(!enabled)return;const node=objectForSelection(e);select(node&&page.contains(node)?node:null);};
+      const objectForSelection=e=>e.target instanceof Element?e.target.closest('[data-doc-object]'):null;
+      document.addEventListener('click',choose);
+      document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose(e);}});
+      document.addEventListener('submit',e=>e.preventDefault());
+      document.addEventListener('dragstart',e=>e.preventDefault());
+      window.addEventListener('message',e=>{
+        if(e.source!==parent||e.data?.channel!==channel)return;
+        if(e.data.type==='request-ready')send('slide-ready',{width:w,height:h});
+        if(e.data.type==='selection-enabled')enabled=e.data.enabled===true;
+        if(e.data.type==='select-object')select([...page.querySelectorAll('[data-doc-object]')].find(n=>n.getAttribute('data-doc-object')===e.data.id)||null);
+      });
+      window.addEventListener('resize',fit);fit();send('slide-ready',{width:w,height:h});return;
+    }
     function finishText(){if(!active)return;if(composing||settling){pendingBlur=true;return;}pendingBlur=false;const node=active;active=null;node.removeAttribute('contenteditable');if(node.textContent!==before)send('edit',{id:node.getAttribute('data-doc-text'),text:node.textContent});outline();send('ended');}
     document.addEventListener('input',()=>{if(active)outline();});
     const object=e=>e.target instanceof Element?e.target.closest('[data-doc-object]'):null;
@@ -90,7 +109,6 @@ export function slideBridge(channel: string, pageId: string) {
       const styles=['translate','scale'].map(key=>({key,value:node.style.getPropertyValue(key),priority:node.style.getPropertyPriority(key)}));
       gesture={node,x:e.clientX,y:e.clientY,before:p,styles,resize,width:rect.width/zoom,height:rect.height/zoom,originX:origin[0]||0,originY:origin[1]||0,moved:false,pointerId:e.pointerId};
       try{node.setPointerCapture(e.pointerId);}catch{}
-      // Do not prevent the initial down: double-click still enters text editing.
     }
     document.addEventListener('pointerdown',e=>begin(e,e.target===handle),true);
     document.addEventListener('pointermove',e=>{

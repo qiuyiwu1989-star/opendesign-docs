@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
-import { applyWorkspaceChange, objectPreviewPage } from './studio-workspace-model';
+import { applyWorkspaceChange, objectPreviewPage, previewObjectId, workspaceObjectId } from './studio-workspace-model';
 import { historyOf, moveHistory } from './history';
 import { inspectDocumentObjects } from './document-objects';
 import { patchDocumentGeometry } from './document-geometry';
@@ -44,4 +44,17 @@ it('maps document object offsets to the correct slide without assuming shared ID
   expect(objectPreviewPage(html, 'missing')).toBeUndefined();
   const long = '<main><p>Flow</p></main>';
   expect(objectPreviewPage(long, inspectDocumentObjects(long)[0]!.objects[0]!.id)).toBeUndefined();
+});
+
+
+it('maps canvas objects only within the current page and source snapshot', () => {
+  const html = '<section class="slide"><h1>First</h1></section><section class="slide"><h2>Second</h2></section>';
+  const id = inspectDocumentObjects(html)[0]!.objects.find(o => o.tag === 'h2')!.id;
+  const bridgeId = previewObjectId(html, 'page-1', id);
+  expect(bridgeId).not.toBe('');
+  expect(workspaceObjectId(html, 'page-1', bridgeId)).toBe(id);
+  expect(workspaceObjectId(html, 'page-0', bridgeId)).toBeUndefined();
+  expect(workspaceObjectId(html, 'page-1', { id: bridgeId })).toBeUndefined();
+  expect(workspaceObjectId(html, 'page-1', 'injected-object')).toBeUndefined();
+  expect(previewObjectId(html, 'page-0', id)).toBe('');
 });

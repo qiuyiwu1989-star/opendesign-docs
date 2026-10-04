@@ -40,7 +40,7 @@ export function StudioObjectWorkspace({ source: baseline, onSave, onBack, onDirt
   return <section aria-label="Studio 排版编辑" className="studio-object-workspace">
     <h3>排版与对象编辑</h3>
     <p>修改本机 Studio 作品；保存后产生新版本。云端副本与 Docs 副本不会随之修改。</p>
-    <p>从图层选择对象，调整样式、插入图片或调整顺序；普通段落保持文档流。预览用于核对，暂不支持在画布上拖动或替换已有图片。</p>
+    <p>从图层选择对象，调整样式、插入图片或调整顺序；普通段落保持文档流。演示页支持点击选择对象；暂不支持在画布上拖动或替换已有图片。</p>
     {error && <p role="alert">{error}</p>}
     <div className="studio-object-actions">
       <button disabled={saving || pending || !history.past.length} onClick={() => move('undo')}>撤销</button>
@@ -62,7 +62,7 @@ export function StudioObjectWorkspace({ source: baseline, onSave, onBack, onDirt
             } catch (e) { setError(e instanceof Error ? e.message : '对象已变化，请重新选择。'); }
           }} />
       </div>
-      <StudioObjectPreview source={history.present} selected={selected} disabled={saving || pending} />
+      <StudioObjectPreview source={history.present} selected={selected} disabled={saving || pending} onSelect={id => { if (!savingRef.current && !pending) setSelected(id); }} />
     </div>
   </section>;
 }

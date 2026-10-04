@@ -6,9 +6,9 @@ import { applyProposal, proposeText, type TextProposal } from "./studio-model";
 import { StudioCanvasPreview } from "./StudioCanvasPreview";
 import { loadRemote, createRemote, resumeRemote, refreshRemote, generateRemote, acceptRemote, discardRemoteCandidate, saveRemote } from "./studio-remote-client";
 
-type Props = { task: StudioTask; onBack: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult>; onBusy: (busy: boolean) => void; onDirty: (dirty: boolean) => void };
+type Props = { task: StudioTask; existingOnly?: boolean; onBack: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult>; onBusy: (busy: boolean) => void; onDirty: (dirty: boolean) => void };
 type RecordState = Awaited<ReturnType<typeof loadRemote>>;
-export function StudioRemoteWorkspace({ task, onBack, onCreate, onBusy, onDirty }: Props) {
+export function StudioRemoteWorkspace({ task, existingOnly = false, onBack, onCreate, onBusy, onDirty }: Props) {
   const [record, setRecord] = useState<RecordState>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState("");
@@ -45,15 +45,14 @@ export function StudioRemoteWorkspace({ task, onBack, onCreate, onBusy, onDirty 
   const locked = busy || loading;
   const canMutate = !locked && !loadFailed && !pending && !candidate;
   return <section aria-label="服务端副本工作区">
-    <div className="studio-task-heading"><h3>云端副本</h3><button disabled={locked || dirty || pending} onClick={onBack}>返回本地任务</button></div>
+    <div className="studio-task-heading"><h3>{existingOnly ? '云端作品' : '云端副本'}</h3><button disabled={locked || dirty || pending} onClick={onBack}>{existingOnly ? '返回云端作品列表' : '返回本地任务'}</button></div>
     <p>免费试用，无需登录。通过当前浏览器的 30 天匿名身份访问，暂不支持跨设备；清除 Cookie 或身份到期后无法继续访问原云端副本。请及时创建 Docs 副本并导出。原本地作品保留，双方不会自动互相覆盖。</p>
     {error && <p role="alert">{error} 输入保留；请先核对操作状态，不要重复创建修改。</p>}
     {notice && <p role="status">{notice}</p>}
     {loading && <p role="status">正在读取副本记录…</p>}
     {loadFailed && <button disabled={locked} onClick={() => void run(async () => { setRecord(await loadRemote(task.id)); setLoadFailed(false); })}>重试读取本机恢复记录</button>}
     {pending && <section className="studio-diff"><h4>有待核对的服务端操作</h4><p>可能已在服务端完成，本机尚未同步。恢复会核对同一操作，不会新建第二次修改。</p><button disabled={locked} onClick={() => void run(async () => { const next = await resumeRemote(task.id); setRecord(next); setNotice("已恢复查询，请核对当前版本和候选。已有输入保留。"); })}>恢复并核对操作</button></section>}
-    {!loading && !loadFailed && !project && !pending && <p>将当前已保存作品上传，以便生成 AI 修改候选；原本地作品保留。模型会接收你选中的文字与修改要求。</p>}
-    {!loading && !loadFailed && !project && !pending && <button className="primary" disabled={locked || !task.draft.versions.length} onClick={() => void run(async () => { installed(await createRemote(task.id, task.draft.versions.at(-1)!.source), "服务端副本已创建，原本机任务保持不变。"); })}>创建云端副本</button>}
+    {!loading && !loadFailed && !project && !pending && (existingOnly ? <p role="alert">本机恢复记录不可用，请返回列表重新打开作品。</p> : <><p>将当前已保存作品上传，以便生成 AI 修改候选；原本地作品保留。模型会接收你选中的文字与修改要求。</p><button className="primary" disabled={locked || !task.draft.versions.length} onClick={() => void run(async () => { installed(await createRemote(task.id, task.draft.versions.at(-1)!.source), "服务端副本已创建，原本机任务保持不变。"); })}>创建云端副本</button></>)}
     {head && version && <>
       <p className="studio-version-label">云端第 {project!.revisions.length} 版 · 以已保存的云端版本为准</p>
       <button disabled={locked || dirty || pending || !!candidate} onClick={() => void run(async () => installed(await refreshRemote(task.id), "已重新读取服务端版本。"))}>重新读取服务端版本</button>

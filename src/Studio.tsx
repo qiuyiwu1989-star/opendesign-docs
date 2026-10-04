@@ -11,6 +11,9 @@ import { StudioRemoteWorkspace } from "./StudioRemoteWorkspace";
 import { StudioJobHistory } from "./StudioJobHistory";
 import "./studio.css";
 import { StudioObjectWorkspace } from "./StudioObjectWorkspace";
+import { StudioCloudProjects } from "./StudioCloudProjects";
+import { recoverCloudProject } from "./studio-cloud-recovery";
+import type { RemoteProject } from "./studio-remote-store";
 const agentEnabled = import.meta.env.VITE_STUDIO_AGENT_ENABLED === "true";
 const empty = ():StudioDraft => ({ brief:{title:"",audience:"",goal:"",materials:""},outline:[],versions:[] });
 const errorText=(e:unknown)=>e instanceof Error?e.message:"操作失败，请重试。";
@@ -20,6 +23,8 @@ export function Studio({onClose,onCreate}:Props){
   const [tasks,setTasks]=useState<StudioTask[]>([]),[active,setActive]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState("");
   const [storageNotice,setStorageNotice]=useState("");
   const [remoteMode,setRemoteMode]=useState(false);
+  const [cloudLibrary,setCloudLibrary]=useState(false);
+  const [cloudTask,setCloudTask]=useState<StudioTask|null>(null);
   const [pendingLeave,setPendingLeave]=useState<{action:()=>void}|null>(null);
   const requestLeave=(action:()=>void)=>{if(dirty.current)setPendingLeave({action});else action();};
   const close=()=>{if(!busy)requestLeave(onClose);};
@@ -28,9 +33,14 @@ export function Studio({onClose,onCreate}:Props){
     const warn=(e:BeforeUnloadEvent)=>{if(dirty.current)e.preventDefault();};window.addEventListener("beforeunload",warn);
     return()=>{alive=false;previous?.focus();window.removeEventListener("beforeunload",warn);};},[]);
   const saved=(task:StudioTask)=>setTasks(rows=>[task,...rows.filter(t=>t.id!==task.id)]);
-  const create=async(draft:StudioDraft)=>{setBusy(true);setError("");try{const task=await saveStudioTask(crypto.randomUUID(),draft,0);saved(task);dirty.current=false;setRemoteMode(false);setActive(task.id);}catch(e){setError(errorText(e));}finally{setBusy(false);}};
+  const create=async(draft:StudioDraft)=>{setBusy(true);setError("");try{const task=await saveStudioTask(crypto.randomUUID(),draft,0);saved(task);dirty.current=false;setRemoteMode(false);setCloudLibrary(false);setCloudTask(null);setActive(task.id);}catch(e){setError(errorText(e));}finally{setBusy(false);}};
   const importBackup=async(file:File)=>{setBusy(true);try{if(file.size>5*1024*1024)throw new Error("备份不能超过 5 MiB。");const raw=new TextDecoder("utf-8",{fatal:true}).decode(await file.arrayBuffer());await create(parseStudioBackup(raw));}catch(err){setError(errorText(err));}finally{setBusy(false);}};
   const selected=tasks.find(t=>t.id===active);
+  const openCloud=async(project:RemoteProject)=>{
+    setBusy(true);setError("");
+    try { const handle=await recoverCloudProject(project);dirty.current=false;setCloudTask(handle); }
+    finally {setBusy(false);}
+  };
   return <dialog className="studio-dialog" ref={dialog} aria-labelledby="studio-title" onCancel={e=>{e.preventDefault();close();}}>
     <header className="studio-topbar"><div><span className="studio-brand">OpenDesign / Studio</span><h2 id="studio-title">创作工作区</h2></div><p>免费 · 本地草稿保存在浏览器 · {agentEnabled ? "AI 局部修改试用" : "尚未接入 AI"}</p><button disabled={busy} onClick={close} aria-label="关闭 Studio">返回 Docs ↗</button></header>
     {agentEnabled&&<StudioJobHistory disabled={busy}/>}
@@ -39,15 +49,17 @@ export function Studio({onClose,onCreate}:Props){
     {pendingLeave&&<section role="alert" className="studio-diff"><p>还有未保存的输入。离开后普通输入不会保存，已保存版本和 AI 生成记录会保留。</p><button autoFocus onClick={()=>setPendingLeave(null)}>返回继续编辑</button><button onClick={()=>{const action=pendingLeave.action;setPendingLeave(null);action();}}>放弃未保存输入并继续</button></section>}
     {loading?<p role="status">正在读取任务…</p>:<div className="studio-workspace">
       <fieldset disabled={busy} className="studio-task-tools"><legend>我的创作</legend>
-        <label>当前任务<select value={active} onChange={e=>{const id=e.target.value;requestLeave(()=>{void (async()=>{setBusy(true);try{const rows=await listStudioTasks();setTasks(rows);dirty.current=false;setRemoteMode(false);setActive(id);}catch(e){setError(errorText(e));}finally{setBusy(false);}})();});}}><option value="" disabled>选择任务</option>{tasks.map(t=><option key={t.id} value={t.id}>{t.draft.brief.title||"未命名任务"} · {t.id.slice(0,8)}</option>)}</select></label>
+        <label>{cloudLibrary ? "本地任务" : "当前任务"}<select value={active} onChange={e=>{const id=e.target.value;requestLeave(()=>{void (async()=>{setBusy(true);try{const rows=await listStudioTasks();setTasks(rows);dirty.current=false;setRemoteMode(false);setCloudLibrary(false);setCloudTask(null);setActive(id);}catch(e){setError(errorText(e));}finally{setBusy(false);}})();});}}><option value="" disabled>选择任务</option>{tasks.map(t=><option key={t.id} value={t.id}>{t.draft.brief.title||"未命名任务"} · {t.id.slice(0,8)}</option>)}</select></label>
+        {agentEnabled&&<button aria-pressed={cloudLibrary} onClick={()=>requestLeave(()=>{dirty.current=false;setCloudTask(null);setCloudLibrary(true);})}>我的云端作品</button>}
+        {cloudLibrary&&<button onClick={()=>requestLeave(()=>{dirty.current=false;setCloudTask(null);setCloudLibrary(false);setRemoteMode(false);})}>返回本地任务</button>}
         <button onClick={()=>requestLeave(()=>void create(empty()))}>新建任务</button>
         <button onClick={()=>upload.current?.click()}>从备份创建任务</button>
-        {agentEnabled&&selected?.draft.versions.length&&!remoteMode?<button onClick={()=>requestLeave(()=>setRemoteMode(true))}>打开云端副本</button>:null}
-        {agentEnabled&&selected?.draft.versions.length&&!remoteMode?<p className="studio-sidebar-note">创建云端副本会将当前作品上传以便 AI 修改；原本地作品保留。</p>:null}
+        {agentEnabled&&selected?.draft.versions.length&&!remoteMode&&!cloudLibrary?<button onClick={()=>requestLeave(()=>setRemoteMode(true))}>打开云端副本</button>:null}
+        {agentEnabled&&selected?.draft.versions.length&&!remoteMode&&!cloudLibrary?<p className="studio-sidebar-note">创建云端副本会将当前作品上传以便 AI 修改；原本地作品保留。</p>:null}
         <p className="studio-sidebar-note">任务保存在当前浏览器。下载备份，可在其他设备继续。</p>
       </fieldset>
       <input ref={upload} hidden type="file" accept=".json,application/json" onChange={e=>{const file=e.target.files?.[0];e.target.value="";if(file)requestLeave(()=>void importBackup(file));}}/>
-      <main className="studio-main">{selected?remoteMode?<StudioRemoteWorkspace key={selected.id} task={selected} onBack={()=>requestLeave(()=>setRemoteMode(false))} onCreate={onCreate} onBusy={setBusy} onDirty={value=>{dirty.current=value;}}/>:<StudioTaskEditor key={`${selected.id}:${selected.revision}`} task={selected} busy={busy} setBusy={setBusy} onSaved={saved} onStorageNotice={setStorageNotice} onFork={create} onDirty={value=>{dirty.current=value;}} onCreate={onCreate} onClose={onClose}/>:<div className="studio-empty"><span className="studio-eyebrow">从一个想法开始</span><h3>把需求整理成一份方案</h3><p>填写目标、确认大纲，再把结构草稿带入 Docs 完善设计。</p><button className="primary" onClick={()=>void create(empty())}>创建第一个任务</button><p>已有草稿？从左侧恢复任务备份。</p></div>}</main>
+      <main className="studio-main">{cloudLibrary?(cloudTask?<StudioRemoteWorkspace key={`cloud:${cloudTask.id}`} task={cloudTask} existingOnly onBack={()=>requestLeave(()=>setCloudTask(null))} onCreate={onCreate} onBusy={setBusy} onDirty={value=>{dirty.current=value;}}/>:<StudioCloudProjects onOpen={openCloud}/>):selected?remoteMode?<StudioRemoteWorkspace key={selected.id} task={selected} onBack={()=>requestLeave(()=>setRemoteMode(false))} onCreate={onCreate} onBusy={setBusy} onDirty={value=>{dirty.current=value;}}/>:<StudioTaskEditor key={`${selected.id}:${selected.revision}`} task={selected} busy={busy} setBusy={setBusy} onSaved={saved} onStorageNotice={setStorageNotice} onFork={create} onDirty={value=>{dirty.current=value;}} onCreate={onCreate} onClose={onClose}/>:<div className="studio-empty"><span className="studio-eyebrow">从一个想法开始</span><h3>把需求整理成一份方案</h3><p>填写目标、确认大纲，再把结构草稿带入 Docs 完善设计。</p><button className="primary" onClick={()=>void create(empty())}>创建第一个任务</button><p>已有草稿？从左侧恢复任务备份。</p></div>}</main>
     </div>}
   </dialog>;
 }

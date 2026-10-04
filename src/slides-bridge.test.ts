@@ -4,7 +4,7 @@ import { slideBridge } from "./slides-bridge";
 import { validatePlacement } from "./slides";
 
 // Bridge-level event regression tests, not a substitute for native mouse E2E.
-function harness(activate = false) {
+function harness(activate = false, selectionOnly = false) {
   const events: Record<string, (e: any) => void> = {};
   const windowEvents: Record<string, (e: any) => void> = {};
   const messages: any[] = [];
@@ -121,7 +121,7 @@ function harness(activate = false) {
       };
     },
   };
-  new Script(slideBridge("test-channel-123", "page-0")).runInContext(
+  new Script(slideBridge("test-channel-123", "page-0", selectionOnly)).runInContext(
     createContext({
       setTimeout: (fn: () => void) => timers.push(fn),
       document,
@@ -596,4 +596,33 @@ it("exposes the current scale on the keyboard resize handle",()=>{
   expect(h.handle.attributes['aria-label']).toContain('100%');
   h.events.keydown!({target:h.handle,key:'ArrowRight',shiftKey:true,preventDefault(){}});
   expect(h.handle.attributes['aria-label']).toContain('104%');
+});
+
+
+describe('selection-only slide bridge', () => {
+  it('selects objects without installing text or movement handlers', () => {
+    const h = harness(false, true);
+    for (const name of ['dblclick', 'pointerdown', 'pointermove', 'pointerup', 'beforeinput', 'input', 'focusout']) expect(h.events[name]).toBeUndefined();
+    h.messages.length = 0;
+    h.events.click!({ target: h.object, preventDefault() {} });
+    expect(h.messages.at(-1)?.type).toBe('object-select');
+    expect(h.handle.style.display).toBe('none');
+    h.messages.length = 0;
+    for (const key of ['ArrowRight', 'Delete', 'Backspace']) h.events.keydown!({ key, target: h.object, preventDefault() {} });
+    h.windowEvents.message!({ source: h.parent, data: { channel: 'test-channel-123', type: 'apply-placement', id: h.object.id, placement: { x: 90, y: 40, scale: 2 } } });
+    expect(h.messages).toEqual([]);
+    expect(h.object.style.translate).toBeUndefined();
+    expect(h.object.attributes.contenteditable).toBeUndefined();
+  });
+  it('honors disabled selection and rejects wrong parent or stale token', () => {
+    const h = harness(false, true);
+    h.windowEvents.message!({ source: h.parent, data: { channel: 'test-channel-123', type: 'selection-enabled', enabled: false } });
+    h.messages.length = 0;
+    for (const [source, channel] of [[{}, 'test-channel-123'], [h.parent, 'old-channel']]) h.windowEvents.message!({ source, data: { channel, type: 'selection-enabled', enabled: true } });
+    h.events.click!({ target: h.object, preventDefault() {} });
+    expect(h.messages).toEqual([]);
+    h.windowEvents.message!({ source: h.parent, data: { channel: 'test-channel-123', type: 'selection-enabled', enabled: true } });
+    h.events.keydown!({ key: 'Enter', target: h.object, preventDefault() {} });
+    expect(h.messages.at(-1)?.type).toBe('object-select');
+  });
 });

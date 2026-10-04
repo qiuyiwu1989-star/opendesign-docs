@@ -16,3 +16,15 @@ export function objectPreviewPage(source: string, selected: string): string | un
   if (!object) return undefined;
   return inspectSlides(source).find(page => page.start === object.start || page.objects.some(item => item.start === object.start))?.id;
 }
+
+/** Bridge and document inspector IDs are separate namespaces. */
+export function previewObjectId(source: string, pageId: string, documentId: string): string {
+  const object = inspectDocumentObjects(source)[0]?.objects.find(o => o.id === documentId);
+  return inspectSlides(source).find(p => p.id === pageId)?.objects.find(o => o.start === object?.start)?.id ?? '';
+}
+export function workspaceObjectId(source: string, pageId: string, bridgeId: unknown): string | undefined {
+  if (typeof bridgeId !== 'string') return undefined;
+  const object = inspectSlides(source).find(p => p.id === pageId)?.objects.find(o => o.id === bridgeId);
+  if (!object) return undefined;
+  return inspectDocumentObjects(source)[0]?.objects.find(o => o.start === object.start)?.id;
+}

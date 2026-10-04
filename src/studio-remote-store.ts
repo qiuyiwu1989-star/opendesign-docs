@@ -77,6 +77,26 @@ export async function readRemoteRecord(taskId: string): Promise<RemoteRecord | n
     tx.onabort = () => {db.close();reject(storageError());};
   });
 }
+
+/** Reuse the original operation journal when rediscovering a cloud project. */
+export async function findRemoteRecord(projectId: string): Promise<RemoteRecord | null> {
+  if (!uuid.test(projectId)) throw invalid();
+  const db = await open();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('records', 'readonly');
+    const request = tx.objectStore('records').getAll();
+    tx.oncomplete = () => {
+      db.close();
+      try {
+        const matches = request.result.map(validateRecord).filter(record => record.projectId === projectId);
+        // Never silently abandon a pending save/accept when a duplicate cache exists.
+        matches.sort((a, b) => Number(!!b.pending) - Number(!!a.pending) || Number(!!b.candidate) - Number(!!a.candidate) || a.taskId.localeCompare(b.taskId));
+        resolve(matches[0] ?? null);
+      } catch { reject(invalid()); }
+    };
+    tx.onabort = () => { db.close(); reject(storageError()); };
+  });
+}
 export async function saveRemoteRecord(record: RecordInput, expectedRevision: number): Promise<RemoteRecord> {
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0 || expectedRevision >= Number.MAX_SAFE_INTEGER) throw invalid();
   const input = validateInput(record); // Copy all nested values before the first await.

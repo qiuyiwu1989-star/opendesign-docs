@@ -176,6 +176,7 @@ export function createSlidePreview(
   source: string,
   channel: string,
   pageId: string,
+  selectionOnly = false,
 ): string {
   const pages = inspectSlides(source),
     page = pages.find((p) => p.id === pageId);
@@ -196,6 +197,6 @@ export function createSlidePreview(
   });
   return preview.replace(
     new RegExp(`<script nonce="${channel}">[\\s\\S]*?<\\/script>`),
-    `<script nonce="${channel}">${slideBridge(channel, pageId)}</script>`,
+    `<script nonce="${channel}">${slideBridge(channel, pageId, selectionOnly)}</script>`,
   );
 }

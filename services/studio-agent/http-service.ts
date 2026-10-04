@@ -4,8 +4,9 @@ import { PostgresAgentJobs, JobQuotaError } from './pg-jobs';
 import { verifyStudioPostgres } from './pg-core';
 import { acquireStateLock } from './state-lock';
 import { LocalProjectRepository, ProjectRevisionConflict } from './projects';
-import { principalFromVerifiedSession, bindJob, assertJobAccess, StudioAccessError } from './access';
+import { type Principal, bindJob, assertJobAccess, StudioAccessError } from './access';
 import { loadLocalSessionCodec } from './session';
+import { anonymousIdentityResolver, validatedPrincipal, principalKey, localJobsDirectory, type IdentityResolver } from './identity';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { TextProposal } from '../../src/studio-model';
 import { resolve, join } from 'node:path';
@@ -20,7 +21,8 @@ export type StudioAgentServiceOptions = {
   modelConfigured?: () => boolean;
 };
 /** Local anonymous service only; preserves the development origin/loopback boundary. */
-export function createStudioAgentService(options: StudioAgentServiceOptions = {}) {
+export function createStudioAgentService(options: StudioAgentServiceOptions = {}, testIdentityResolver?: IdentityResolver) {
+    if (testIdentityResolver && process.env.NODE_ENV !== 'test') throw new Error('Identity injection is test-only');
     let publicOrigin: URL | undefined;
     if(options.publicOrigin !== undefined) {
       try { publicOrigin = new URL(options.publicOrigin); } catch { throw new Error('Invalid public origin'); }
@@ -43,11 +45,12 @@ export function createStudioAgentService(options: StudioAgentServiceOptions = {}
     let modelActive = false;
     const executions = new Set<Promise<TextProposal>>();
     const managers = new Map<string, Promise<LocalAgentJobs | PostgresAgentJobs>>();
-    const jobsFor = (scope: string): Promise<LocalAgentJobs | PostgresAgentJobs> => {
-      if(options.postgresPool)return Promise.resolve(new PostgresAgentJobs(options.postgresPool,principalFromVerifiedSession({kind:'anonymous',sessionId:scope})));
+    const jobsFor = (actor: Principal): Promise<LocalAgentJobs | PostgresAgentJobs> => {
+      if(options.postgresPool)return Promise.resolve(new PostgresAgentJobs(options.postgresPool,actor));
+      const scope = principalKey(actor);
       const existing = managers.get(scope); if (existing) return existing;
       if (managers.size >= 32) throw new Error('Session capacity reached');
-      const jobs = new LocalAgentJobs(join(root, 'sessions', scope), async (request,signal) => {
+      const jobs = new LocalAgentJobs(join(...localJobsDirectory(root, actor)), async (request,signal) => {
         if (modelActive) throw new Error('Local model concurrency reached');
         if (!configured()) throw new Error('Model not configured');
         modelActive = true;
@@ -93,12 +96,12 @@ export function createStudioAgentService(options: StudioAgentServiceOptions = {}
         const body:unknown=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Buffer.concat(chunks)));
         if(!body||typeof body!=='object'||Array.isArray(body)){json(400,{error:'请求无效。'});return;}
         if (['owner','ownerId','userId','scope','sessionId','projectOwner'].some(key => Object.hasOwn(body,key))) {json(400,{error:'不能指定任务归属。'});return;}
-        const identity = (await sessions).resolve(req.headers.cookie);
-        if (!options.postgresPool && !managers.has(identity.scope) && managers.size >= 32) {json(429,{error:'本机匿名会话数量已达上限，请重启开发服务后重试。'});return;}
+        const identity = await (testIdentityResolver ?? anonymousIdentityResolver(await sessions))(req.headers.cookie);
+        const actor = validatedPrincipal(identity);
+        if (!options.postgresPool && !managers.has(principalKey(actor)) && managers.size >= 32) {json(429,{error:'本机匿名会话数量已达上限，请重启开发服务后重试。'});return;}
         if (closed) {json(503,{error:'任务服务已关闭。'});return;}
-        const jobs = await jobsFor(identity.scope);
+        const jobs = await jobsFor(actor);
         if (identity.setCookie) res.setHeader('Set-Cookie',identity.setCookie);
-        const actor = principalFromVerifiedSession({kind:'anonymous',sessionId:identity.scope});
         const input = body as Record<string, unknown>;
         const fields = (allowed: string[]) => {
           if(Object.keys(input).some(key=>!allowed.includes(key))) throw new Error('Invalid fields');

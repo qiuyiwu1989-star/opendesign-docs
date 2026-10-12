@@ -1,0 +1,32 @@
+import {useEffect,useRef,useState} from 'react';
+import {Excalidraw,convertToExcalidrawElements,CaptureUpdateAction,exportToBlob} from '@excalidraw/excalidraw';
+import type {ExcalidrawImperativeAPI} from '@excalidraw/excalidraw/types';
+import {sceneRevision,validateProposal,assertProposalCurrent,thoughtsHtml,type CanvasContext,type CanvasProposal} from './thinking-model';
+import type {HandoffItem,ImportResult} from './handoff';
+import '@excalidraw/excalidraw/index.css';
+import './thinking-canvas.css';
+const KEY='opendesign-thinking-canvas-v1';
+function initial(){try{const raw=localStorage.getItem(KEY);if(raw)return JSON.parse(raw);}catch{}return {elements:[],files:{}};}
+export function ThinkingCanvas({onClose,onCreate}:{onClose:()=>void;onCreate:(items:HandoffItem[])=>Promise<ImportResult>}){
+ const [seed]=useState(initial),[api,setApi]=useState<ExcalidrawImperativeAPI|null>(null);
+ const [boardId]=useState(()=>crypto.randomUUID());
+ const [status,setStatus]=useState('本机画布'),[instruction,setInstruction]=useState(''),[proposal,setProposal]=useState<CanvasProposal|null>(null),[selected,setSelected]=useState(0),[error,setError]=useState('');
+ const syncQueue=useRef(Promise.resolve());
+ const context=useRef<CanvasContext|null>(null),timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined),lastSaved=useRef(''),latest=useRef<()=>void>(()=>{}),sentInstruction=useRef('');
+ const endpoint=`/api/thinking-canvas/context?board=${boardId}`;
+ async function sendContext(c:CanvasContext){if(!import.meta.env.DEV){setStatus('已保存在本机 · Agent 桥接仅本地开发可用');return;}try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(c)});if(!r.ok)throw new Error();setStatus('已保存 · 已同步到本地 Agent 接口');}catch{setStatus('已保存在本机 · Agent 接口未连接');}}
+ function sync(c:CanvasContext){syncQueue.current=syncQueue.current.then(()=>sendContext(c));return syncQueue.current;}
+ useEffect(()=>()=>{clearTimeout(timer.current);latest.current();},[]);
+ useEffect(()=>{if(!import.meta.env.DEV)return;const t=setInterval(()=>{fetch(`/api/thinking-canvas/proposal?board=${boardId}`).then(async r=>{if(r.ok)setProposal(validateProposal(await r.json()));}).catch(()=>{});},1500);return()=>clearInterval(t);},[boardId]);
+ const download=(blob:Blob,name:string)=>{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};
+ async function dismiss(){try{await fetch(`/api/thinking-canvas/dismiss?board=${boardId}`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});}catch{}setProposal(null);}
+ function accept(){if(!api||!proposal)return;try{assertProposalCurrent(proposal,sceneRevision(api.getSceneElementsIncludingDeleted()));const notes=convertToExcalidrawElements(proposal.notes.map(n=>({type:'text' as const,text:n.text,x:n.x,y:n.y,fontSize:24,strokeColor:'#5a4fe6'})));api.updateScene({elements:[...api.getSceneElementsIncludingDeleted(),...notes],captureUpdate:CaptureUpdateAction.IMMEDIATELY});void dismiss();setError('');}catch(e){setError((e as Error).message);}}
+ async function discuss(){if(!instruction.trim()||!context.current)return;sentInstruction.current=instruction;context.current={...context.current,instruction,capturedAt:new Date().toISOString()};await sync(context.current);}
+ async function toDocs(){if(!api)return;try{const ids=api.getAppState().selectedElementIds;const texts=api.getSceneElements().filter(e=>ids[e.id]&&e.type==='text').map(e=>'text'in e?String(e.text):'');const result=await onCreate([{name:'画布构思',source:thoughtsHtml(texts),label:'画布文字整理'}]);if(!result.ok)throw new Error('文档未保存，请重试。');onClose();}catch(e){setError((e as Error).message);}}
+ return <div className="thinking-shell" role="dialog" aria-label="构思画布"><header><div><strong>构思画布</strong><span>把想法摆出来，再一起讨论</span></div><button onClick={onClose}>返回 Docs</button></header><div className="thinking-body"><div className="thinking-stage"><Excalidraw initialData={seed} excalidrawAPI={setApi} langCode="zh-CN" onChange={(elements,appState,files)=>{
+ setSelected(Object.keys(appState.selectedElementIds).length);const revision=sceneRevision(elements);context.current={boardId,revision,elements:[...elements],selectedIds:Object.keys(appState.selectedElementIds),instruction:sentInstruction.current,capturedAt:new Date().toISOString()};
+ const saved=JSON.stringify({elements,files,appState:{viewBackgroundColor:appState.viewBackgroundColor}});
+ const signature=revision+JSON.stringify(appState.selectedElementIds);if(lastSaved.current===signature)return;lastSaved.current=signature;
+ const save=()=>{try{localStorage.setItem(KEY,saved);if(context.current)void sync(context.current);}catch{setError('本机保存失败，请下载画布备份后再离开。');}};latest.current=save;clearTimeout(timer.current);timer.current=setTimeout(save,450);
+ }}/></div><aside className="thinking-discussion"><h2>围绕画布讨论</h2><p className="thinking-muted">{selected?`已选 ${selected} 个对象`:'当前整张画布'} · 原稿保持可见</p><label htmlFor="thinking-prompt">想一起讨论什么？</label><textarea id="thinking-prompt" value={instruction} onChange={e=>setInstruction(e.target.value)} placeholder="例如：这些方向与团队之间，应该怎样组织？"/><button onClick={()=>void discuss()} disabled={!instruction.trim()}>准备讨论上下文</button><p className="thinking-muted">本原型不自动调用模型。准备后，在当前 Agent 对话中说“读取画布”；建议会显示在这里。</p><p role="status">{status}</p>{error&&<p role="alert">{error}</p>}{proposal&&<section className="thinking-proposal"><h3>Agent 建议</h3><p>{proposal.message}</p>{proposal.notes.map((n,i)=><p key={i}>{n.text}</p>)}<button onClick={accept}>将建议加入画布</button><button onClick={()=>void dismiss()}>放弃建议</button><small>加入后可用画布撤销；原有对象不替换。</small></section>}<div className="thinking-actions"><button onClick={()=>void toDocs()}>选中文字整理到 Docs</button><button onClick={()=>{if(api)download(new Blob([JSON.stringify({type:'excalidraw',version:2,source:'OpenDesign Docs',elements:api.getSceneElementsIncludingDeleted(),appState:{viewBackgroundColor:api.getAppState().viewBackgroundColor},files:api.getFiles()})],{type:'application/json'}),'thinking.excalidraw');}}>下载画布备份</button><button onClick={()=>{if(api)void exportToBlob({elements:api.getSceneElements(),appState:{...api.getAppState(),exportWithDarkMode:false},files:api.getFiles(),mimeType:'image/png'}).then((b:Blob)=>download(b,'thinking.png')).catch(()=>setError('图片导出失败，请先下载画布备份。'));}}>下载视觉快照</button></div><details><summary>Agent 读取入口</summary><code>{location.origin}{endpoint}</code><p>本地试验接口，仅当前开发服务可用。画布关闭后不再同步。</p></details></aside></div></div>;
+}

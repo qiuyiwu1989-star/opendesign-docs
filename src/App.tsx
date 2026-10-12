@@ -15,12 +15,14 @@ import { deferredFeature } from "./deferred-feature";
 import type { SlidesEditor as SlideEditorView } from "./SlidesEditor";
 import type { LongEditor as LongEditorView } from "./LongEditor";
 import { DraftWorkspace, type DraftControls } from "./DraftWorkspace";
-import { BackupMenu } from "./BackupMenu";
+import type { BackupMenu as BackupMenuView } from "./BackupMenu";
 import { rememberSelection, restoredSelection } from "./workspace-selection";
 import "./style.css";
 import "./export.css";
 import "./review.css";
 
+const BackupMenu = deferredFeature<ComponentProps<typeof BackupMenuView>>(() => import("./BackupMenu").then(m => ({ default: m.BackupMenu })), "备份");
+const ThinkingCanvas = deferredFeature<{ onClose: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult> }>(() => import("./ThinkingCanvas").then(m => ({ default: m.ThinkingCanvas })), "构思画布");
 const Studio = deferredFeature<{ onClose: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult> }>(() => import("./Studio").then(m => ({ default: m.Studio })), "Studio");
 const SlidesEditor = deferredFeature<ComponentProps<typeof SlideEditorView>>(() => import("./SlidesEditor").then(m => ({ default: m.SlidesEditor })), "演示编辑器");
 const Editor = deferredFeature<ComponentProps<typeof LongEditorView>>(() => import("./LongEditor").then(m => ({ default: m.LongEditor })), "文档编辑器");
@@ -44,6 +46,7 @@ const message = (error: unknown) =>
 export default function App() {
   const [docs, setDocs] = useState<DocumentRecord[]>([]);
   const [active, setActive] = useState("");
+  const [canvasOpen, setCanvasOpen] = useState(window.location.hash === "#canvas");
   const [studioOpen, setStudioOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -183,11 +186,13 @@ export default function App() {
     >
       <span aria-hidden="true">▤</span> 文档
     </button>
+    <button onClick={() => setCanvasOpen(true)}>构思画布</button>
     <button onClick={() => setStudioOpen(true)} title="打开创作工作区，当前文档保留">Studio</button>
     </>
   );
   return (
     <div className={`app docs-shell ${showLibrary ? "docs-library-open" : ""}`}>
+      {canvasOpen && <ThinkingCanvas onClose={() => setCanvasOpen(false)} onCreate={add} />}
       {studioOpen && <Studio onClose={() => setStudioOpen(false)} onCreate={add} />}
       {confirmation && <HandoffDialog request={confirmation} close={() => setConfirmation(null)} />}
       <aside

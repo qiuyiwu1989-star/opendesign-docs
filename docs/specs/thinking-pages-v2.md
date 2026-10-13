@@ -1,0 +1,11 @@
+# Thinking pages v2 — local prototype
+
+Implemented on feat/conversation-canvas. Data model: work → pages → Excalidraw objects. Each page has its own scene, image files and discussion history. Page navigation supports add, rename, duplicate, drag reorder and keyboard-accessible move buttons. Overview thumbnails and presentation use the same scenes. The 16:9 surface is an editing viewport, not a clipping boundary; original object coordinates are retained.
+
+Storage: v2 localStorage with 350 ms debounce and flush on navigation/pagehide. Legacy v1 remains untouched and is copied to a migration-backup key before migration. Invalid stored data fails closed. JSON backup restores as new works, preserving originals. Browser storage is local, not cloud sync. Large image-heavy works can hit browser quotas; save errors prompt backup.
+
+Discussion: current page or selected-object PNG plus structured elements, page/work identity and scene revision go to the development-only localhost bridge. Requests survive selection changes at the same revision; editing creates new context and prevents stale proposal acceptance. AI calls remain manual through an external agent. A returned suggestion is explicitly accepted into the page and supports editor undo. Discussion text persists, but the bridge and pending proposals are in memory and disappear on server restart. Docs handoff currently exports page/selection text, not complete slide layout.
+
+Validation (2026-10-13): TypeScript, Vite build, existing bundle budgets; 8 focused unit tests covering migration, corrupt data, duplicate isolation, ordering, restore and proposal validation. Isolated Chrome integration verified edit → switch → duplicate → return → snapshot request → proposal acceptance → presentation navigation → reload, including original content and discussion persistence. User browser storage was not used for test fixtures or overwritten. Visual screenshot reviewed at 1500 × 960. Full database suite not rerun; previously blocked by local embedded-Postgres ICU dependency.
+
+Next milestones: durable request/response transport and request IDs, actual agent-read acknowledgments, fixed-page composition and complete slide export, cloud persistence and collaboration. No production deployment in this iteration.

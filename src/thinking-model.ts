@@ -1,5 +1,5 @@
 export type Thought = { id:string; text:string; x:number; y:number };
-export type CanvasContext = { boardId:string; revision:string; elements:unknown[]; selectedIds:string[]; instruction:string; capturedAt:string };
+export type CanvasContext = { boardId:string; revision:string; elements:unknown[]; selectedIds:string[]; instruction:string; capturedAt:string; pageId?:string; pageName?:string; workName?:string; scope?:string; requestId?:string; snapshot?:string };
 export type CanvasProposal = { id:string; baseRevision:string; message:string; notes:Thought[] };
 export function sceneRevision(elements:readonly {id:string;version:number;isDeleted:boolean}[]):string {
  return JSON.stringify(elements.map(e=>[e.id,e.version,e.isDeleted]));

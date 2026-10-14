@@ -21,6 +21,7 @@ dist-handoff/
 
 # Standalone Studio service bundle.
 dist-studio-agent/
+dist-thinking-cloud/
 
 # Python backup-tool test artifacts.
 __pycache__/

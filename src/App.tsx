@@ -22,7 +22,7 @@ import "./export.css";
 import "./review.css";
 
 const BackupMenu = deferredFeature<ComponentProps<typeof BackupMenuView>>(() => import("./BackupMenu").then(m => ({ default: m.BackupMenu })), "备份");
-const ThinkingCanvas = deferredFeature<{ onClose: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult> }>(() => import("./ThinkingCanvas").then(m => ({ default: m.ThinkingCanvas })), "构思画布");
+const ThinkingCanvas = deferredFeature<{ onClose: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult>; initialView?: "projects" | "canvas"; documents?: { id: string; name: string }[]; onOpenDocument?: (id: string) => void; onCreateProjectDocument?: (item: HandoffItem, existingId?: string) => Promise<string> }>(() => import("./ThinkingCanvas").then(m => ({ default: m.ThinkingCanvas })), "构思画布");
 const Studio = deferredFeature<{ onClose: () => void; onCreate: (items: HandoffItem[]) => Promise<ImportResult> }>(() => import("./Studio").then(m => ({ default: m.Studio })), "Studio");
 const SlidesEditor = deferredFeature<ComponentProps<typeof SlideEditorView>>(() => import("./SlidesEditor").then(m => ({ default: m.SlidesEditor })), "演示编辑器");
 const Editor = deferredFeature<ComponentProps<typeof LongEditorView>>(() => import("./LongEditor").then(m => ({ default: m.LongEditor })), "文档编辑器");
@@ -46,7 +46,8 @@ const message = (error: unknown) =>
 export default function App() {
   const [docs, setDocs] = useState<DocumentRecord[]>([]);
   const [active, setActive] = useState("");
-  const [canvasOpen, setCanvasOpen] = useState(window.location.hash === "#canvas");
+  const [canvasOpen, setCanvasOpen] = useState(["#canvas", "#projects"].includes(window.location.hash));
+  const [canvasView, setCanvasView] = useState<"projects" | "canvas">(window.location.hash === "#projects" ? "projects" : "canvas");
   const [studioOpen, setStudioOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -107,13 +108,37 @@ export default function App() {
     if (id === active) {
       setLibraryOpen(false);
       libraryButton.current?.focus();
-      return;
+      return true;
     }
-    if (!switchAllowed()) return;
+    if (!switchAllowed()) return false;
     dirty.current = false;
     setActive(id);
     setLibraryOpen(false);
     libraryButton.current?.focus();
+    return true;
+  };
+  const openCanvas = (view: "projects" | "canvas") => {
+    setCanvasView(view);
+    setCanvasOpen(true);
+    window.history.replaceState(null, "", `#${view}`);
+  };
+  const closeCanvas = () => {
+    setCanvasOpen(false);
+    if (["#canvas", "#projects"].includes(window.location.hash)) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+  };
+  const createProjectDocument = async (item: HandoffItem, existingId?: string): Promise<string> => {
+    if (importing.current) throw new Error("正在保存文档，请稍后重试。");
+    if (existingId === active && dirty.current) throw new Error("这份文档还有未保存的修改，请先在我的 Docs 保存版本，再更新项目提纲。");
+    importing.current = true;
+    try {
+      const existing = existingId ? (await listDocuments()).find(doc => doc.id === existingId) : undefined;
+      if (existingId === active && dirty.current) throw new Error("这份文档还有未保存的修改，请先保存版本再更新项目提纲。");
+      if (existingId && !existing) throw new Error("关联文档未找到，请保留项目内容后重试。");
+      const record = existing ? { ...existing, versions: [...existing.versions, { id: crypto.randomUUID(), source: item.source, createdAt: new Date().toISOString(), label: item.label ?? "项目提纲更新" }] } : newDocument(item.name, item.source, item.label ?? "项目提纲");
+      await saveDocument(record, existing?.versions.at(-1)?.id);
+      setDocs(rows => rows.some(doc => doc.id === record.id) ? rows.map(doc => doc.id === record.id ? record : doc) : [record, ...rows]);
+      return record.id;
+    } finally { importing.current = false; }
   };
   const add = async (items: HandoffItem[], guard: () => boolean | Promise<boolean> = switchAllowed): Promise<ImportResult> => {
     if (importing.current) return { ok: false, reason: "rejected" };
@@ -186,13 +211,14 @@ export default function App() {
     >
       <span aria-hidden="true">▤</span> 文档
     </button>
-    <button onClick={() => setCanvasOpen(true)}>构思画布</button>
+    <button onClick={() => openCanvas("projects")}>我的项目</button>
+    <button onClick={() => openCanvas("canvas")}>构思画布</button>
     <button onClick={() => setStudioOpen(true)} title="打开创作工作区，当前文档保留">Studio</button>
     </>
   );
   return (
     <div className={`app docs-shell ${showLibrary ? "docs-library-open" : ""}`}>
-      {canvasOpen && <ThinkingCanvas onClose={() => setCanvasOpen(false)} onCreate={add} />}
+      {canvasOpen && <ThinkingCanvas initialView={canvasView} documents={docs.map(({ id, name }) => ({ id, name }))} onClose={closeCanvas} onCreate={add} onCreateProjectDocument={createProjectDocument} onOpenDocument={id => { if (docs.some(doc => doc.id === id) && select(id)) closeCanvas(); }} />}
       {studioOpen && <Studio onClose={() => setStudioOpen(false)} onCreate={add} />}
       {confirmation && <HandoffDialog request={confirmation} close={() => setConfirmation(null)} />}
       <aside
@@ -238,6 +264,7 @@ export default function App() {
         >
           演示页示例
         </button>
+        <button className="studio-launch" disabled={loading || busy} onClick={() => openCanvas("projects")}><span>我的项目</span><small>意图、提纲与演示稿 →</small></button>
         <button className="studio-launch" disabled={loading || busy} onClick={() => setStudioOpen(true)}><span>Studio · 创作草稿</span><small>从需求到方案 →</small></button>
         <details className="scenario-library">
           <summary>从场景样板开始</summary>

@@ -1,0 +1,19 @@
+[Unit]
+Description=Private OpenDesign canvas synchronization
+After=network.target
+[Service]
+Type=simple
+User=opendesign
+Group=opendesign
+WorkingDirectory=/opt/opendesign-docs
+EnvironmentFile=/etc/opendesign-thinking.env
+ExecStart=/usr/bin/node /opt/opendesign-docs/dist-thinking-cloud/server.mjs
+Restart=on-failure
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/opendesign-thinking
+[Install]
+WantedBy=multi-user.target

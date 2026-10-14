@@ -1,3 +1,5 @@
+import {versionRoute} from './versions';
+import {resolve} from 'node:path';
 import type { Plugin } from 'vite';
 import { validateProposal, type CanvasContext, type CanvasProposal } from '../../src/thinking-model';
 /** Development-only bridge. Browser origin must match; CLI calls are loopback-only. */
@@ -13,6 +15,7 @@ export function thinkingCanvasPlugin():Plugin {
   const url=new URL(req.url??'/', 'http://localhost'); const id=url.searchParams.get('board');
   if(req.method==='GET'&&url.pathname==='/boards')return reply(200,[...contexts.values()].map(c=>({boardId:c.boardId,capturedAt:c.capturedAt,selectedCount:c.selectedIds.length})));
   if(!id||! /^[a-zA-Z0-9-]{1,100}$/.test(id))return reply(400,{error:'board required'});
+  if(url.pathname==='/versions')return versionRoute(resolve(server.config.root,'.local/thinking-versions'),req,res,url,id);
   if(req.method==='GET'){const item=url.pathname==='/proposal'?proposals.get(id):contexts.get(id);return reply(item?200:404,item??{error:'No context yet'});}
   if(req.method!=='POST')return reply(405,{error:'Method not allowed'});
   if(!req.headers['content-type']?.startsWith('application/json'))return reply(415,{error:'JSON required'});

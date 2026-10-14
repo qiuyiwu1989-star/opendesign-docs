@@ -1,0 +1,15 @@
+# Place inside existing TLS server block; serve built frontend separately.
+location /api/thinking-cloud/ {
+    client_max_body_size 120m;
+    proxy_pass http://127.0.0.1:5206;
+    proxy_set_header Host $host;
+    proxy_read_timeout 120s;
+}
+location = /api/thinking-canvas/versions {
+    client_max_body_size 120m;
+    proxy_pass http://127.0.0.1:5206;
+    proxy_set_header Host $host;
+    proxy_read_timeout 120s;
+}
+# Do not expose legacy development context endpoint on production.
+location = /api/thinking-canvas/context { return 404; }

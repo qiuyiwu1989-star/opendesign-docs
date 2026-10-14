@@ -31,7 +31,9 @@
     "db:verify": "tsx services/studio-agent/pg-migrate.ts verify",
     "db:rollback-empty": "tsx services/studio-agent/pg-migrate.ts rollback-empty",
     "studio:worker": "tsx services/studio-agent/pg-worker.ts",
-    "studio:archive": "tsx services/studio-agent/archive-cli.ts"
+    "studio:archive": "tsx services/studio-agent/archive-cli.ts",
+    "build:thinking-cloud": "tsx scripts/build-thinking-cloud.ts",
+    "thinking:cloud": "tsx services/thinking-cloud/server.ts"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.18.1",
